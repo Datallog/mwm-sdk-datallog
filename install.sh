@@ -48,7 +48,7 @@ fi
 
 GITHUB="https://github.com/"
 
-checkout "${GITHUB}datallog/datallog.git" "${DATALLOG_ROOT}" "${DATALLOG_GIT_TAG:-master}"
+checkout "${GITHUB}Datallog/mwm-sdk-datallog.git" "${DATALLOG_ROOT}" "${DATALLOG_GIT_TAG:-master}"
 
 if ! command -v datallog 1>/dev/null; then
     {
