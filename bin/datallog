@@ -16,7 +16,6 @@ if [ "$1" == "sdk-update" ]; then
     source ./update_sdk.sh
     update_sdk "$@"
     echo "$date_timestamp" > ../.sdk-update-timestamp
-    exit 0
 fi
 
 #check latest timestamp of sdk-update execution
