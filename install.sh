@@ -50,19 +50,6 @@ GITHUB="https://github.com/"
 
 checkout "${GITHUB}Datallog/mwm-sdk-datallog.git" "${DATALLOG_ROOT}" "${DATALLOG_GIT_TAG:-master}"
 
-if ! command -v datallog 1>/dev/null; then
-    {
-        echo
-        colorize 1 "WARNING"
-        echo ": seems you still have not added 'datallog' to the load path."
-        echo
-    } >&2
-
-    { # Without args, `init` commands print installation help
-        "${DATALLOG_ROOT}/bin/datallog" sdk-update || true
-    } >&2
-fi
-
 echo 'export DATALLOG_ROOT="$HOME/.datallog"' >>~/.bashrc
 echo '[[ -d $DATALLOG_ROOT/bin ]] && export PATH="$DATALLOG_ROOT/bin:$PATH"' >>~/.bashrc
 
@@ -76,8 +63,4 @@ if command -v fish &>/dev/null; then
     fish -c "set -Ux DATALLOG_ROOT $DATALLOG_ROOT; fish_add_path \$DATALLOG_ROOT/bin"
 fi
 
-if ! command -v datallog 1>/dev/null; then
-  {
-    DATALLOG_ROOT/bin/datallog sdk-update || true
-  } >&2
-fi
+DATALLOG_ROOT/bin/datallog sdk-update || true
