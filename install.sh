@@ -63,4 +63,4 @@ if command -v fish &>/dev/null; then
     fish -c "set -Ux DATALLOG_ROOT $DATALLOG_ROOT; fish_add_path \$DATALLOG_ROOT/bin"
 fi
 
-DATALLOG_ROOT/bin/datallog sdk-update || true
+${DATALLOG_ROOT}/bin/datallog sdk-update || true
