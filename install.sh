@@ -75,3 +75,9 @@ echo '[[ -d $DATALLOG_ROOT/bin ]] && export PATH="$DATALLOG_ROOT/bin:$PATH"' >>~
 if command -v fish &>/dev/null; then
     fish -c "set -Ux DATALLOG_ROOT $DATALLOG_ROOT; fish_add_path \$DATALLOG_ROOT/bin"
 fi
+
+if ! command -v datallog 1>/dev/null; then
+  {
+    DATALLOG_ROOT/bin/datallog sdk-update || true
+  } >&2
+fi
