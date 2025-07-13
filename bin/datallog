@@ -1,0 +1,60 @@
+#!/bin/bash
+
+if [ "$DATALLLOG_LOG_LEVEL" == "debug" ]; then
+    set -x
+fi
+
+export DATALLOG_CURRENT_PATH=$(pwd)
+
+cd $(dirname "$0")/../scripts
+source ./get_env_sdk_path.sh
+
+
+
+date_timestamp=$(date +%Y-%m-%dT%H:%M:%S)
+if [ "$1" == "sdk-update" ]; then
+    source ./update_sdk.sh
+    update_sdk "$@"
+    echo "$date_timestamp" > ../.sdk-update-timestamp
+    exit 0
+fi
+
+#check latest timestamp of sdk-update execution
+if [ ! -f "../.sdk-update-timestamp" ]; then
+    echo "$date_timestamp" > ../.sdk-update-timestamp
+else
+    last_update=$(cat ../.sdk-update-timestamp)
+    # if delta between last update and now is greater than 7 days, then ask to update
+    last_update_seconds=$(date -d "$last_update" +%s)
+    current_seconds=$(date -d "$date_timestamp" +%s)
+    delta_seconds=$((current_seconds - last_update_seconds))
+    if [ $delta_seconds -gt 604800 ]; then
+        echo "You want to check for updates of the SDK [y/n]?"
+        read -r answer
+        if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+            source ./update_sdk.sh
+            update_sdk "$@"
+            echo "$date_timestamp" > ../.sdk-update-timestamp
+        else
+            echo "Skipping SDK update check."
+        fi
+    fi
+fi
+
+
+env_sdk_path=$(get_env_sdk_path)
+python_executable=${env_sdk_path}/bin/python
+activate_script=${env_sdk_path}/bin/activate
+
+# check if the virtual environment directory exists and if is newer than requirements.txt
+if [ ! -d "$env_sdk_path" ] || [ "$env_sdk_path" -ot "$env_sdk_path/../requirements.txt" ] || [ ! -L ${python_executable} ] || [ ! -e ${python_executable} ] || [ ! -f ${activate_script} ]; then
+    source ./create_env.sh
+    create_env
+fi
+
+source ${activate_script}
+
+cd $(dirname "$0")/../utils
+
+
+python -m cli "$@"

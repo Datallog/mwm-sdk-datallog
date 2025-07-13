@@ -1,0 +1,12 @@
+{
+    "mypy.dmypyExecutable": "${workspaceFolder}/env/bin/dmypy",
+    "python.analysis.addHoverSummaries": true,
+    "python.analysis.inlayHints.callArgumentNames": "all",
+    "python.analysis.inlayHints.functionReturnTypes": true,
+    "python.analysis.inlayHints.variableTypes": true,
+    "python.analysis.inlayHints.pytestParameters": true,
+    "python.analysis.languageServerMode": "full",
+    "python.analysis.importFormat": "relative",
+    "python.analysis.supportDocstringTemplate": true,
+    "python.analysis.typeCheckingMode": "strict"
+}

@@ -1,0 +1,24 @@
+
+FROM docker.io/library/python:3.10-slim
+
+# install bash and common dependencies for package installation
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    bash \
+    build-essential \
+    ca-certificates \
+    git \
+    libffi-dev \
+    libssl-dev \
+    python3-dev \
+    python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+COPY install_packages.sh /install_packages.sh
+RUN chmod +x /install_packages.sh
+
+COPY gen_hash.sh /gen_hash.sh
+RUN chmod +x /gen_hash.sh
+
+
+# to rebuild the image, only when changing the dockerfile
+RUN date > /build_date.txt

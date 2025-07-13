@@ -1,0 +1,6 @@
+env
+deploy-envs
+.credentials
+.sdk-update-timestamp
+datallog.log
+__pycache__
