@@ -31,7 +31,7 @@ subparsers.required = True  # Make selecting a command mandatory
 # --- 'init' command ---
 parser_init = subparsers.add_parser(
     "init",
-    help="Create a new deployment in the current directory",
+    help="Create a new deployment",
     usage="""datallog init [options]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
@@ -39,8 +39,9 @@ parser_init.add_argument(
     "name",
     metavar="<name>",
     type=str,
+    nargs="?",
     default="",
-    help="Name of the deployment (default: deploy-1)",
+    help="Name of the deployment",
 )
 
 # --- 'create-app' command ---
@@ -84,7 +85,7 @@ package_group.add_argument(
 parser_run = subparsers.add_parser(
     "run",
     help="Run a script in the current deployment",
-    usage="""datallog run [options] <app_name> [--seed <seed>] [--parallelism <n>] [--log-to-dir <dir>]""",
+    usage="""datallog run [options] <app_name> [--seed <seed>] [--seed-file <seed_file>] [--parallelism <n>] [--log-to-dir <dir>]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
 

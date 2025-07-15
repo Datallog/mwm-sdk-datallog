@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 
 set -e
+
 [ -n "$DATALLOG_DEBUG" ] && set -x
+
+if [ "$(id -u)" -eq 0 ]; then
+    if [ -z "$DATALLOG_ALLOW_ROOT" ]; then
+        echo "Error: Running this installer as root is not allowed for safety reasons. You can set the environment variable DATALLOG_ALLOW_ROOT to override this, but it is not recommended." >&2
+        exit 1
+    else
+        echo "Warning: Running as root because DATALLOG_ALLOW_ROOT is set. Proceed with caution." >&2
+    fi
+fi
 
 if [ -z "$DATALLOG_ROOT" ]; then
     if [ -z "$HOME" ]; then
@@ -64,3 +74,5 @@ if command -v fish &>/dev/null; then
 fi
 
 ${DATALLOG_ROOT}/bin/datallog sdk-update || true
+echo
+echo "Installation complete. Please re-open your terminal to use the 'datallog' command."

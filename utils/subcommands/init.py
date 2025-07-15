@@ -9,6 +9,7 @@ from errors import DatallogError, UnableToSaveConfigError
 from get_user_path import get_user_path
 from logger import Logger
 from get_deploy_env import get_deploy_env
+from parser_deploy_ini import parse_deploy_ini
 from validate_name import validate_name
 from conteiner import (
     conteiner_check_if_image_exists,
@@ -85,28 +86,40 @@ def init(args: Namespace) -> None:
 - Must be between 3 and 50 characters long."""
             )
         deploy_path = get_user_path() / project_name
-        if deploy_path.exists():
+        deploy_ini_path = deploy_path / "deploy.ini"
+        if deploy_path.exists() and not deploy_ini_path.exists():
             raise DatallogError(
                 f"Project '{project_name}' already exists at {deploy_path}."
             )
         deploy_path.mkdir(parents=True, exist_ok=True)
         spinner = Halo(text="Creating deploy", spinner="dots")
         spinner.start()  # type: ignore
+        if not deploy_ini_path.exists():
+            runtime = "python-3.10"
+            region = "us-east-1"
 
-        runtime = "python-3.10"
-        region = "us-east-1"
+            create_deploy_config(
+                name=project_name,
+                runtime=runtime,
+                region=region,
+                output_path=deploy_path / "deploy.ini",
+            )
+            base_project_files = Path(__file__).parent.parent.parent / "deploy-base"
+            spinner.text = "Copying base project files"  # type: ignore
 
-        create_deploy_config(
-            name=project_name,
-            runtime=runtime,
-            region=region,
-            output_path=deploy_path / "deploy.ini",
-        )
+            shutil.copytree(base_project_files, deploy_path, dirs_exist_ok=True)
+        else:
+            deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
 
-        base_project_files = Path(__file__).parent.parent.parent / "deploy-base"
-        spinner.text = "Copying base project files"  # type: ignore
+            logger.info("Parsed deploy.ini successfully.")
 
-        shutil.copytree(base_project_files, deploy_path, dirs_exist_ok=True)
+            runtime = deploy_ini.get("deploy", "runtime")
+            region = deploy_ini.get("deploy", "region")
+            logger.warning(
+                f"Project '{project_name}' already exists. Skipping deploy.ini creation."
+            )
+            spinner.succeed("Deploy configuration already exists, using existing config")  # type: ignore
+        
 
         python_version = runtime[(len("python-")) :].strip()
 
