@@ -30,7 +30,7 @@ if command -v rpm-ostree &> /dev/null; then
         echo "Podman is already installed as a layered package."
     else
         echo "Podman not found. Installing with rpm-ostree..."
-        if rpm-ostree install podman; then
+        if rpm-ostree install --allow-inactive --idempotent podman; then
             echo "Podman has been layered successfully."
             DATTALLOG_REQUIRE_REBOOT="true"
         else
