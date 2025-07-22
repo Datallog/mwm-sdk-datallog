@@ -108,10 +108,10 @@ main() {
 
 	${DATALLOG_ROOT}/bin/datallog sdk-update || true
 	if [ -n "$DATTALLOG_REQUIRE_REBOOT" ]; then
-		echo "Installation complete. Please re-open your terminal to use the 'datallog' command."
+		echo "Installation complete. Please reboot your system to apply changes."
+		echo "After reboot, you can use the 'datallog' command."
 	else
-		echo "Installation complete! You can now use the Datallog SDK."
-		echo "Run 'datallog' to get started."
+		echo "Installation complete. Please re-open your terminal to use the 'datallog' command."
 	fi
 
 }

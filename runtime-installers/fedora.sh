@@ -75,7 +75,7 @@ else
     echo "Podman installation and setup completed."
     
     echo Instaling dependencies... 
-    sudo dnf install  --assumeyes curl git gcc make zlib zlib-devel bzip2-devel openssl-devel xz-devel || {
+    sudo dnf install  --assumeyes curl git gcc make zlib zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite sqlite-devel libffi-devel findutils || {
         echo "Failed to install dependencies. Please check your dnf installation."
         exit 1
     }
