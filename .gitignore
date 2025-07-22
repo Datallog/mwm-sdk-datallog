@@ -4,3 +4,6 @@ deploy-envs
 .sdk-update-timestamp
 datallog.log
 __pycache__
+.stignore
+.stfolder
+settings.json

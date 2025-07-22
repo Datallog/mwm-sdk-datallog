@@ -9,7 +9,6 @@ from errors import DatallogError, UnableToSaveConfigError
 from get_user_path import get_user_path
 from logger import Logger
 from get_deploy_env import get_deploy_env
-from parser_deploy_ini import parse_deploy_ini
 from validate_name import validate_name
 from conteiner import (
     conteiner_check_if_image_exists,
@@ -21,6 +20,8 @@ from install_local_python import (
     create_local_env,
     install_local_python_packages,
 )
+from settings import load_settings
+
 
 logger = Logger(__name__)
 
@@ -72,6 +73,7 @@ def init(args: Namespace) -> None:
     """
     spinner = None
     try:
+        settings   = load_settings()
         project_name = args.name.strip() if args.name else ""
         if len(project_name) == 0:
             project_name = input("Enter the name of the new project: ").strip()
@@ -86,46 +88,34 @@ def init(args: Namespace) -> None:
 - Must be between 3 and 50 characters long."""
             )
         deploy_path = get_user_path() / project_name
-        deploy_ini_path = deploy_path / "deploy.ini"
-        if deploy_path.exists() and not deploy_ini_path.exists():
+        if deploy_path.exists():
             raise DatallogError(
                 f"Project '{project_name}' already exists at {deploy_path}."
             )
         deploy_path.mkdir(parents=True, exist_ok=True)
         spinner = Halo(text="Creating deploy", spinner="dots")
         spinner.start()  # type: ignore
-        if not deploy_ini_path.exists():
-            runtime = "python-3.10"
-            region = "us-east-1"
 
-            create_deploy_config(
-                name=project_name,
-                runtime=runtime,
-                region=region,
-                output_path=deploy_path / "deploy.ini",
-            )
-            base_project_files = Path(__file__).parent.parent.parent / "deploy-base"
-            spinner.text = "Copying base project files"  # type: ignore
+        runtime = "python-3.10"
+        region = "us-east-1"
 
-            shutil.copytree(base_project_files, deploy_path, dirs_exist_ok=True)
-        else:
-            deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
+        create_deploy_config(
+            name=project_name,
+            runtime=runtime,
+            region=region,
+            output_path=deploy_path / "deploy.ini",
+        )
 
-            logger.info("Parsed deploy.ini successfully.")
+        base_project_files = Path(__file__).parent.parent.parent / "deploy-base"
+        spinner.text = "Copying base project files"  # type: ignore
 
-            runtime = deploy_ini.get("deploy", "runtime")
-            region = deploy_ini.get("deploy", "region")
-            logger.warning(
-                f"Project '{project_name}' already exists. Skipping deploy.ini creation."
-            )
-            spinner.succeed("Deploy configuration already exists, using existing config")  # type: ignore
-        
+        shutil.copytree(base_project_files, deploy_path, dirs_exist_ok=True)
 
         python_version = runtime[(len("python-")) :].strip()
 
         spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
-        conteiner_status = conteiner_check_if_image_exists(runtime)
+        conteiner_status = conteiner_check_if_image_exists(settings, runtime)
 
         if conteiner_status != "Yes":
             if conteiner_status == "Outdated":
@@ -135,7 +125,7 @@ def init(args: Namespace) -> None:
 
             spinner.start(text="Building Docker image")  # type: ignore
             logger.warning("Docker image does not exist. Building the image...")
-            conteiner_build(runtime)
+            conteiner_build(settings, runtime)
             spinner.succeed("Docker image built successfully")  # type: ignore
             logger.info("Docker image built successfully.")
         else:
@@ -149,6 +139,7 @@ def init(args: Namespace) -> None:
 
         logger.info("Checking if packages are installed in Docker container")
         conteiner_install_from_packages_list(
+            settings=settings,
             requirements_file=deploy_path / "requirements.txt",
             runtime_image=runtime,
             env_dir=env_path,

@@ -21,6 +21,8 @@ from logger import Logger
 from parser_deploy_ini import parse_deploy_ini
 from token_manager import retrieve_token
 from variables import datallog_url
+from settings import load_settings
+
 
 logger = Logger(__name__)
 
@@ -28,6 +30,7 @@ logger = Logger(__name__)
 def push(args: Namespace) -> None:
     spinner = None
     try:
+        settings = load_settings()
         token = retrieve_token()
         if not token:
             logger.error("You are not logged in. Please log in first with `datallog login`.")
@@ -54,7 +57,7 @@ def push(args: Namespace) -> None:
 
         spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
-        conteiner_status = conteiner_check_if_image_exists(runtime)
+        conteiner_status = conteiner_check_if_image_exists(settings=settings, runtime_image=runtime)
         if conteiner_status != "Yes":
             if conteiner_status == "Outdated":
                 spinner.fail("Docker image is outdated")  # type: ignore
@@ -62,7 +65,7 @@ def push(args: Namespace) -> None:
                 spinner.fail("Docker image does not exist") # type: ignore
             spinner.start(text="Building Docker image")  # type: ignore
             logger.warning("Docker image does not exist. Building the image...")
-            conteiner_build(runtime)
+            conteiner_build(settings, runtime)
             spinner.succeed("Docker image built successfully")  # type: ignore
             logger.info("Docker image built successfully.")
         else:
@@ -75,6 +78,7 @@ def push(args: Namespace) -> None:
         spinner.start(text="Installing packages")  # type: ignore
 
         conteiner_install_packages(
+            settings=settings,
             requirements_file=deploy_path / "requirements.txt",
             runtime_image=runtime,
             env_dir=env_path,
@@ -82,6 +86,7 @@ def push(args: Namespace) -> None:
         spinner.succeed("Packages installed successfully")  # type: ignore
         spinner.start(text="Generating deploy hash")  # type: ignore
         _, hash_stdout, _ = conteiner_generate_hash(
+            settings=settings,
             runtime_image=runtime,
             env_dir=env_path,
             deploy_dir=deploy_path,

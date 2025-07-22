@@ -1,4 +1,5 @@
 import json
+from math import perm
 import os
 import subprocess
 from pathlib import Path
@@ -13,6 +14,7 @@ from datetime import datetime, timezone
 from tempfile import NamedTemporaryFile
 import sys
 from logger import Logger
+from schema import Settings
 
 logger = Logger(__name__)
 
@@ -118,6 +120,7 @@ def conteiner_exec(
 
 
 def conteiner_run(
+    settings: Settings,
     runtime_image: str,
     command: str,
     volumes: List[Tuple[Path, Path]],
@@ -134,14 +137,20 @@ def conteiner_run(
     """
     volumes_args = [("-v", f"{volume[0]}:{volume[1]}:Z") for volume in volumes]
     volumes_args_list = [item for sublist in volumes_args for item in sublist]
+    
+    permissions_args = ["--user", f"{os.getuid()}:{os.getgid()}"]
+    if settings.conteiner_engine == "podman":
+        permissions_args = ["--userns=keep-id"]
+    
+    
+    
     conteiner_command = [
-        "docker",
+        settings.conteiner_engine,
         "run",
         *volumes_args_list,
         "--rm",
         "-it",
-        "-u",
-        f"{os.getuid()}:{os.getgid()}",
+        *permissions_args,
         "--platform",
         "linux/amd64",
         *docker_args,
@@ -152,10 +161,10 @@ def conteiner_run(
     return conteiner_exec(conteiner_command, print_output=print_output)
 
 
-def conteiner_build(image_name: str) -> Tuple[subprocess.Popen[str], str, str]:
+def conteiner_build(settings: Settings, image_name: str) -> Tuple[subprocess.Popen[str], str, str]:
     dockerfile = Path.cwd() / ".." / "runtimes" / image_name
     args = [
-        "docker",
+        settings.conteiner_engine,
         "buildx",
         "build",
         "--no-cache",
@@ -172,20 +181,22 @@ def conteiner_build(image_name: str) -> Tuple[subprocess.Popen[str], str, str]:
 
 
 def conteiner_install_packages(
+    settings: Settings,
     requirements_file: Path,
     env_dir: Path,
     runtime_image: str,
 ) -> None:
     """
-    Install packages in a Docker container.
+    Install packages in a container.
 
     Args:
         requirements_file (Path): Path to the requirements file.
         env_dir (Path): Directory for the virtual environment.
-        runtime_image (str): Docker image to use for the runtime.
+        runtime_image (str): image to use for the runtime.
     """
 
     conteiner_run(
+        settings=settings,
         runtime_image=runtime_image,
         command="/install_packages.sh",
         volumes=[
@@ -196,6 +207,7 @@ def conteiner_install_packages(
 
 
 def conteiner_install_from_requirements(
+    settings: Settings,
     requirements_file: Path,
     env_dir: Path,
     runtime_image: str,
@@ -203,6 +215,7 @@ def conteiner_install_from_requirements(
 ) -> Tuple[subprocess.Popen[str], str, str]:
 
     return conteiner_run(
+        settings=settings,
         runtime_image=runtime_image,
         command="/install_packages.sh",
         args=["requirements"],
@@ -215,22 +228,24 @@ def conteiner_install_from_requirements(
 
 
 def conteiner_install_from_packages_list(
+    settings: Settings,
     requirements_file: Path,
     env_dir: Path,
     runtime_image: str,
     packages: List[str],
 ) -> Tuple[subprocess.Popen[str], str, str]:
     """
-    Install packages in a Docker container from a list.
+    Install packages in a container from a list.
 
     Args:
         requirements_file (Path): Path to the requirements file (to save).
         env_dir (Path): Directory for the virtual environment.
-        runtime_image (str): Docker image to use for the runtime.
+        runtime_image (str): image to use for the runtime.
         packages (List[str]): List of packages to install.
     """
 
     return conteiner_run(
+        settings=settings,
         runtime_image=runtime_image,
         command="/install_packages.sh",
         args=["packages", *packages],
@@ -242,7 +257,7 @@ def conteiner_install_from_packages_list(
 
 
 def conteiner_generate_hash(
-    runtime_image: str, env_dir: Path, deploy_dir: Path
+    settings: Settings, runtime_image: str, env_dir: Path, deploy_dir: Path
 ) -> Tuple[subprocess.Popen[str], str, str]:
     """
     Generate a hash of the environment directory.
@@ -255,6 +270,7 @@ def conteiner_generate_hash(
     """
 
     result: Tuple[subprocess.Popen[str], str, str] = conteiner_run(
+        settings=settings,
         runtime_image=runtime_image,
         volumes=[
             (deploy_dir, Path("/deploy")),
@@ -266,20 +282,21 @@ def conteiner_generate_hash(
 
 
 def conteiner_check_if_image_exists(
+    settings: Settings,
     runtime_image: str,
 ) -> Literal["No", "Yes", "Outdated"]:
     """
     Check if a Docker image exists.
 
     Args:
-        image_name (str): Name of the Docker image.
+        image_name (str): Name of the image.
 
     Returns:
         bool: True if the image exists, False otherwise.
     """
 
     _, stdout, _ = conteiner_exec(
-        ["docker", "images", "-q", "datallog-runtime-" + runtime_image]
+        [settings.conteiner_engine, "images", "-q", "datallog-runtime-" + runtime_image]
     )
     state = bool(stdout.strip())
     if not state:
@@ -315,7 +332,7 @@ def conteiner_check_if_image_exists(
     )
     if created_date < dockerfile_mtime:
         logger.info(
-            f"Warning: Docker image 'datallog-runtime-{runtime_image}' is outdated. "
+            f"Warning: Image 'datallog-runtime-{runtime_image}' is outdated. "
             f"Image created on {created_date}, but Dockerfile was modified on {dockerfile_mtime}."
         )
         return "Outdated"
@@ -323,6 +340,7 @@ def conteiner_check_if_image_exists(
 
 
 def conteiner_run_app(
+    settings: Settings,
     runtime_image: str,
     env_dir: Path,
     deploy_dir: Path,
@@ -331,10 +349,10 @@ def conteiner_run_app(
     log_to_dir: Optional[Path],
 ) -> Tuple[subprocess.Popen[str], str, str]:
     """
-    Run an application in a Docker container.
+    Run an application in a container.
 
     Args:
-        runtime_image (str): Docker image to use for the runtime.
+        runtime_image (str): Image to use for the runtime.
         env_dir (Path): Directory of the virtual environment.
         deploy_dir (Path): Directory of the deployment.
         unix_socket_path (str): Path to the Unix socket for communication.
@@ -351,7 +369,8 @@ def conteiner_run_app(
     args = ["-m", "datallog.utils.worker", str(worker_id)]
 
     return conteiner_run(
-        runtime_image,
+        settings=settings,
+        runtime_image=runtime_image,
         command="/env/bin/python",
         volumes=volumes,
         args=args,
@@ -361,12 +380,14 @@ def conteiner_run_app(
 
 
 def conteiner_generete_build(
+    settings: Settings,
     runtime_image: str, deploy_dir: Path, env_dir: Path
 ) -> Dict[str, Any]:
     try:
         with NamedTemporaryFile(mode="w", delete=True, suffix=".json") as temp_file:
             temp_file_path = Path(temp_file.name)
             conteiner_run(
+                settings=settings,
                 runtime_image=runtime_image,
                 command="/env/bin/python",
                 volumes=[

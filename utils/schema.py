@@ -1,4 +1,4 @@
-from typing import Annotated, Any, List, Optional, cast
+from typing import Annotated, Any, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, TypeAdapter
@@ -17,6 +17,10 @@ class GetWorkItem(BaseModel):
     worker_id: int
     """The worker ID of the worker sending the request. Used by the server
     to identify which worker is asking for a task."""
+
+
+class Settings(BaseModel):
+   conteiner_engine: Literal["docker", "podman"] = "docker"
 
 
 class GetExecutionProps(BaseModel):

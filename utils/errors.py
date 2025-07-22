@@ -99,3 +99,9 @@ class UnableToCreateDeployError(DatallogError):
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
+        
+class InvalidSettingsError(DatallogError):
+    """Custom exception for errors related to invalid settings."""
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message

@@ -14,11 +14,13 @@ from conteiner import conteiner_run_app
 
 if TYPE_CHECKING:
     from worker_server import WorkerServer
+    from settings import Settings
 
 class Execution:
     def __init__(
         self,
         *,
+        settings: 'Settings',
         runtime_image: str,
         deploy_dir: Path,
         env_dir: Path,
@@ -66,6 +68,8 @@ class Execution:
 
         self.add_work_item(first_work_item)
         self.__server: Optional['WorkerServer'] = None
+        
+        self.__settings = settings
 
     def set_server(self, server: 'WorkerServer') -> None:
         self.__server = server
@@ -111,6 +115,7 @@ class Execution:
         try:
             os.system(command='stty sane')
             conteiner_run_app(
+                settings=self.__settings,
                 runtime_image=self._runtime_image,
                 env_dir=self._env_dir,
                 deploy_dir=self._deploy_dir,

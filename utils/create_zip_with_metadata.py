@@ -13,6 +13,7 @@ from conteiner import (
 from parser_deploy_ini import parse_deploy_ini
 from get_deploy_env import get_deploy_env
 from logger import Logger
+from settings import load_settings
 logger = Logger(__name__)
 
 def create_zip_with_metadata(deploy_path: Path, output_zip_filename: Path) -> None:
@@ -25,7 +26,7 @@ def create_zip_with_metadata(deploy_path: Path, output_zip_filename: Path) -> No
                                             If None, it defaults to 'source_dir_name.zip'.
     """
 
-
+    settings = load_settings()
 
     logger.info(f"Source directory: {deploy_path.absolute()}")
     logger.info(f"Output ZIP file: {Path(output_zip_filename).absolute()}")
@@ -58,21 +59,23 @@ def create_zip_with_metadata(deploy_path: Path, output_zip_filename: Path) -> No
 
     deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
     runtime = deploy_ini.get("deploy", "runtime")
-    conteiner_status = conteiner_check_if_image_exists(runtime) 
+    conteiner_status = conteiner_check_if_image_exists(settings, runtime) 
     if  conteiner_status != "Yes":
         logger.info(f"Docker image status {conteiner_status}. Building the image...")
-        conteiner_build(runtime)
+        conteiner_build(settings, runtime)
     else:
         logger.info("Docker image exists.")
     env_path = get_deploy_env(deploy_path)
     logger.info(f"Environment Path: {env_path}")
     conteiner_install_packages(
+        settings=settings,
         requirements_file=deploy_path / "requirements.txt",
         runtime_image=runtime,
         env_dir=env_path,
     )
 
     metadata_content = conteiner_generete_build(
+        settings=settings,
         runtime_image=runtime, deploy_dir=deploy_path, env_dir=env_path
     )
     metadata_json_str = json.dumps(metadata_content, indent=4)

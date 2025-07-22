@@ -1,0 +1,84 @@
+#!/bin/bash
+
+
+set -e 
+# Prints a formatted warning message.
+warn() {
+    echo "WARN: $1"
+}
+
+# --- Main Logic ---
+
+# 1. Check if running on a Fedora-based system
+if ! grep -q -i "fedora" /etc/os-release; then
+    echo "ERROR: This script is intended for Fedora Linux."
+    exit 1
+fi
+
+echo "Fedora-based system detected. Starting Podman installation process..."
+
+# 2. Determine Fedora Variant (Silverblue or Workstation)
+if command -v rpm-ostree &> /dev/null; then
+    # --- Fedora Silverblue Logic ---
+    echo "Fedora Silverblue detected."
+
+    # Check if podman is already layered
+    echo "Checking if Podman is already installed..."
+    if rpm-ostree status | grep -q -w "podman"; then
+        echo "Podman is already installed as a layered package."
+    else
+        echo "Podman not found. Installing with rpm-ostree..."
+        if rpm-ostree install podman; then
+            echo "Podman has been layered echofully."
+            warn "A system reboot is required to apply the changes. Please run 'systemctl reboot'."
+        else
+            echo "ERROR: Failed to install Podman with rpm-ostree."
+            exit 1
+        fi
+    fi
+
+else
+    # --- Fedora Workstation (dnf-based) Logic ---
+    echo "Fedora Workstation (or dnf-based variant) detected."
+
+    # Check if podman command is available
+    echo "Checking if Podman is already installed..."
+    if command -v podman &> /dev/null; then
+        echo "Podman is already installed."
+    else
+        echo "Podman not found. Installing with dnf..."
+        if sudo dnf install -y podman; then
+            echo "Podman installed echofully via dnf."
+        else
+            echo "ERROR: Failed to install Podman with dnf."
+            exit 1
+        fi
+    fi
+
+    # Check if the Podman user socket is enabled and active
+    echo "Checking the status of the Podman user socket..."
+    if systemctl --user is-enabled --quiet podman.socket && systemctl --user is-active --quiet podman.socket; then
+        echo "Podman user socket is already enabled and active."
+    else
+        echo "Enabling and starting the Podman user socket..."
+        # The --now flag both enables (for startup) and starts the service immediately.
+        if systemctl --user enable --now podman.socket; then
+            echo "Podman user socket enabled and started."
+        else
+            echo "ERROR: Failed to enable or start the Podman user socket."
+            # This is not a fatal error, so we won't exit.
+        fi
+    fi
+fi
+
+# 3. Final Verification
+echo "Verifying Podman installation..."
+echo '{"conteiner_engine":"podman"}' > $DATALLOG_ROOT/settings.json
+if command -v podman &> /dev/null; then
+    PODMAN_VERSION=$(podman --version)
+else
+    # This might happen on Silverblue if a reboot hasn't occurred yet.
+    warn "Podman command not found. If you are on Silverblue, please reboot your system."
+fi
+
+echo "Script finished."

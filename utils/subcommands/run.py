@@ -13,6 +13,7 @@ from errors import InvalidAppError
 from worker_server import WorkerServer
 from halo import Halo  # type: ignore
 
+from settings import load_settings
 
 def parse_app(app_name: str) -> str:
     app_name = app_name.strip()
@@ -37,7 +38,7 @@ def parse_app(app_name: str) -> str:
 def run(args: Namespace) -> None:
     spinner = None
     try:
-
+        settings = load_settings()
         deploy_path = get_deploy_base_dir()
 
         processed_app_name = parse_app(args.app_name)
@@ -59,7 +60,7 @@ def run(args: Namespace) -> None:
         spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
 
         spinner.start(text="Checking Docker image")  # type: ignore
-        conteiner_status = conteiner_check_if_image_exists(runtime)
+        conteiner_status = conteiner_check_if_image_exists(settings, runtime)
 
         if conteiner_status != "Yes":
             if conteiner_status == "Outdated":
@@ -69,7 +70,7 @@ def run(args: Namespace) -> None:
                 print("Docker image does not exist. Building the image...")
                 spinner.fail("Docker image does not exist")  # type: ignore
             spinner.start(text="Building Docker image")  # type: ignore
-            conteiner_build(runtime)
+            conteiner_build(settings, runtime)
             spinner.succeed("Docker image built successfully")  # type: ignore
         else:
             spinner.succeed("Runtime Docker image exists")  # type: ignore
@@ -78,6 +79,7 @@ def run(args: Namespace) -> None:
         spinner.start(text="Checking if packages are installed in Docker container")  # type: ignore
         env_path = get_deploy_env(deploy_path)
         conteiner_install_packages(
+            settings=settings,
             requirements_file=deploy_path / "requirements.txt",
             runtime_image=runtime,
             env_dir=env_path,
@@ -103,6 +105,7 @@ def run(args: Namespace) -> None:
             raise InvalidAppError(
                 f"Invalid seed content, please provide a valid JSON: {e}"
             )
+        log_to_dir = None
         if args.log_to_dir:
             try:
                 log_to_dir = Path(args.log_to_dir)
@@ -115,13 +118,14 @@ def run(args: Namespace) -> None:
                 raise InvalidAppError(f"Error creating log directory: {e}")
     
         server = WorkerServer(
+            settings=settings,
             runtime_image=runtime,
             deploy_dir=deploy_path,
             env_dir=env_path,
             app_name=processed_app_name,
             parallelism=args.parallelism,
             seed=seed_content,
-            log_to_dir=args.log_to_dir,
+            log_to_dir=log_to_dir.absolute() if log_to_dir else None,
         )
         server.serve_forever()
     except InvalidAppError as e:

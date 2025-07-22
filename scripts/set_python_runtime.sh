@@ -1,12 +1,60 @@
 #!/bin/bash
+set -e
 
 cd $(dirname "$0")/../scripts
 source ./env.sh
 source ./log.sh
 declare DATTALLOG_PYTHON_EXECUTABLE=""
 
+install_pyenv_macos() {
+	if ! command -v brew 1>/dev/null 2>&1; then
+		echo "datallog: Homebrew is not installed, can't continue." >&2
+		echo "Please install Homebrew from https://brew.sh/" >&2
+		exit 1
+	fi
+    echo "Installing pyenv using Homebrew..."
+    brew update
+    export NONINTERACTIVE=1
+    brew install pyenv || {
+        echo "Failed to install pyenv using Homebrew. Please check your Homebrew installation."
+        exit 1
+    }
+    echo "pyenv installed successfully."
+
+    if command -v bash &>/dev/null; then
+        echo 'export PYENV_ROOT="$HOME/.pyenv"' >>~/.bashrc
+        echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >>~/.bashrc
+        echo 'eval "$(pyenv init - bash)"' >>~/.bashrc
+
+    fi
+
+    if command -v zsh &>/dev/null; then
+        echo 'export PYENV_ROOT="$HOME/.pyenv"' >>~/.zshrc
+        echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >>~/.zshrc
+        echo 'eval "$(pyenv init - zsh)"' >>~/.zshrc
+    fi
+}
+
+
+install_pyenv_linux() {
+    # check if there is curl
+        log_debug "Attempting to install pyenv and Python $PYENV_TARGET_MAJOR_MINOR using curl."
+        if ! command -v curl &>/dev/null; then
+            log_error "curl is required to install datallog. Please install curl and try again."
+            return 1
+        fi
+
+        curl -fsSL https://pyenv.run | bash
+        export PYENV_ROOT="$HOME/.pyenv"
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init - bash)"
+
+}
+
 set_python_executable() {
     found_python_path=""
+
+
     if [ ! -n "$PYENV_ROOT" ]; then
         if [ -d "$HOME/.pyenv" ]; then
             export PYENV_ROOT="$HOME/.pyenv"
@@ -19,39 +67,33 @@ set_python_executable() {
 
     # 1. Check if pyenv command is available
     pyenv_is_available=false
+
     if command -v pyenv &>/dev/null; then
         pyenv_is_available=true
         log_info "pyenv detected."
     fi
 
-    
+    if [ "$pyenv_is_available" = false ]; then
+        if type uname >/dev/null 2>&1; then
+            case "$(uname)" in
+                Darwin)
+                    OS="macos"
+                    VERSION="$(sw_vers -productVersion | cut -f1-2 -d.)"
+                    install_pyenv_macos
+                    pyenv_is_available=true
+                    ;;
+                Linux)
+                    install_pyenv_linux
+                    pyenv_is_available=true
+                    ;;
+            esac
+        fi
+        
+    fi
 
     if [ "$pyenv_is_available" = false ]; then
-        # check if there is curl
-        log_debug "Attempting to install pyenv and Python $PYENV_TARGET_MAJOR_MINOR using curl."
-        if ! command -v curl &>/dev/null; then
-            log_error "curl is required to install datallog. Please install curl and try again."
-            return 1
-        fi
-
-        curl -fsSL https://pyenv.run | bash
-        export PYENV_ROOT="$HOME/.pyenv"
-        export PATH="$PYENV_ROOT/bin:$PATH"
-        eval "$(pyenv init - bash)"
-
-        if command -v bash &>/dev/null; then
-            echo 'export PYENV_ROOT="$HOME/.pyenv"' >>~/.bashrc
-            echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >>~/.bashrc
-            echo 'eval "$(pyenv init - bash)"' >>~/.bashrc
-
-        fi
-
-        if command -v zsh &>/dev/null; then
-            echo 'export PYENV_ROOT="$HOME/.pyenv"' >>~/.zshrc
-            echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >>~/.zshrc
-            echo 'eval "$(pyenv init - zsh)"' >>~/.zshrc
-        fi
-        pyenv_is_available=true
+        log_error "pyenv is not available. Please install pyenv first."
+        return 1
     fi
 
     # check if pyenv update plugin is available
