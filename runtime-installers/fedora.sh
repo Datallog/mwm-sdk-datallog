@@ -38,7 +38,7 @@ if command -v rpm-ostree &> /dev/null; then
         fi
     fi
 
-    rpm-ostree install curl git gcc make zlib
+    rpm-ostree install curl git gcc make zlib zlib-devel bzip2-devel openssl-devel xz-devel 
 
 else
     # --- Fedora Workstation (dnf-based) Logic ---
@@ -75,7 +75,7 @@ else
     echo "Podman installation and setup completed."
     
     echo Instaling dependencies... 
-    sudo dnf install  --assumeyes curl git gcc make zlib zlib-devel || {
+    sudo dnf install  --assumeyes curl git gcc make zlib zlib-devel bzip2-devel openssl-devel xz-devel || {
         echo "Failed to install dependencies. Please check your dnf installation."
         exit 1
     }
