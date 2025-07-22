@@ -75,7 +75,7 @@ else
     echo "Podman installation and setup completed."
     
     echo Instaling dependencies... 
-    dnf install  --assumeyes curl git gcc make zlib
+    sudo dnf install  --assumeyes curl git gcc make zlib
 
 fi
 
