@@ -23,14 +23,15 @@ if command -v rpm-ostree &> /dev/null; then
     # --- Fedora Silverblue Logic ---
     echo "Fedora Silverblue detected."
 
+
     # Check if podman is already layered
     echo "Checking if Podman is already installed..."
-    if rpm-ostree status | grep -q -w "podman"; then
+    if rpm-ostree status --verbose | grep -q -w "podman"; then
         echo "Podman is already installed as a layered package."
     else
         echo "Podman not found. Installing with rpm-ostree..."
         if rpm-ostree install podman; then
-            echo "Podman has been layered echofully."
+            echo "Podman has been layered successfully."
             DATTALLOG_REQUIRE_REBOOT="true"
         else
             echo "ERROR: Failed to install Podman with rpm-ostree."
@@ -38,7 +39,18 @@ if command -v rpm-ostree &> /dev/null; then
         fi
     fi
 
-    rpm-ostree install curl git gcc make zlib zlib-devel bzip2-devel openssl-devel xz-devel 
+    echo "Layering other dependencies..."
+    if rpm-ostree install --allow-inactive --idempotent curl git gcc make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils; then
+        echo "Dependencies layered successfully."
+        # If any package was actually installed, a reboot will be required.
+        # rpm-ostree status will show a new deployment if changes were made.
+        if ! rpm-ostree status | grep -A 1 "Deployments:" | tail -n 1 | grep -q '●'; then
+             DATTALLOG_REQUIRE_REBOOT="true"
+        fi
+    else
+        warn "Failed to layer some dependencies with rpm-ostree."
+        # This is not treated as a fatal error.
+    fi
 
 else
     # --- Fedora Workstation (dnf-based) Logic ---
