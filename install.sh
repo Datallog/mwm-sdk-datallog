@@ -42,7 +42,14 @@ if [ -z "$DATALLOG_ROOT" ]; then
 fi
 
 main() {
-	if ! command -v git &>/dev/null; then
+	HAS_GIT=false
+	if command -v git &>/dev/null; then
+		if git_version=$(git --version 2>/dev/null); then
+			HAS_GIT=true
+		fi
+	fi
+
+	if "$HAS_GIT" = false; then
 		if command -v uname >/dev/null 2>&1; then
 			case "$(uname)" in
 				Darwin)
