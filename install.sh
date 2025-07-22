@@ -40,6 +40,82 @@ if [ -z "$DATALLOG_ROOT" ]; then
     export DATALLOG_ROOT="${HOME}/.datallog"
 fi
 
+install_git_linux() {
+
+	if [ -f /etc/os-release ]; then
+		# /etc/os-release populates a number of shell variables. We care about the following:
+		#  - ID: the short name of the OS (e.g. "debian", "freebsd")
+		#  - VERSION_ID: the numeric release version for the OS, if any (e.g. "18.04")
+		#  - VERSION_CODENAME: the codename of the OS release, if any (e.g. "buster")
+		#  - UBUNTU_CODENAME: if it exists, use instead of VERSION_CODENAME
+		. /etc/os-release
+		case "$ID" in
+			ubuntu|pop|neon|zorin|tuxedo|debian|elementary|galliumos|linuxmint)
+				sudo apt-get install -y git || {
+					echo "Failed to install git using apt. Please check your apt installation."
+					exit 1
+				}
+				;;
+			centos)
+				sudo yum install -y git || {
+					echo "Failed to install git using yum. Please check your yum installation."
+					exit 1
+				}
+				;;
+			ol)
+				sudo dnf install -y git || {
+					echo "Failed to install git using dnf. Please check your dnf installation."
+					exit 1
+				}
+				;;
+			rhel|miraclelinux)
+				sudo dnf install -y git || {
+					echo "Failed to install git using dnf. Please check your dnf installation."
+					exit 1
+				}
+				;;
+			fedora)
+				sudo dnf install -y git || {
+					echo "Failed to install git using dnf. Please check your dnf installation."
+					exit 1
+				}
+				;;
+			rocky|almalinux|nobara|openmandriva|sangoma|risios|cloudlinux|alinux|fedora-asahi-remix)
+				sudo dnf install -y git || {
+					echo "Failed to install git using dnf. Please check your dnf installation."
+					exit 1
+				}
+				;;
+			amzn)
+				sudo yum install -y git || {
+					echo "Failed to install git using yum. Please check your yum installation."
+					exit 1
+				}
+				;;
+			
+			arch|archarm|endeavouros|blendos|garuda|archcraft|cachyos)
+				sudo pacman -S --noconfirm git || {
+					echo "Failed to install git using pacman. Please check your pacman installation."
+					exit 1
+				}
+				;;
+			manjaro|manjaro-arm|biglinux)
+				sudo pacman -S --noconfirm git || {
+					echo "Failed to install git using pacman. Please check your pacman installation."
+					exit 1
+				}
+				;;
+			osmc)
+				sudo apt-get install -y git || {
+					echo "Failed to install git using apt. Please check your apt installation."
+					exit 1
+				}
+				;;
+		esac
+	fi
+
+}
+
 main() {
 	HAS_GIT=false
 	if command -v git &>/dev/null; then
@@ -64,9 +140,7 @@ main() {
 					}
 					;;
 				Linux)
-					echo "datallog: Git is not installed, can't continue." >&2
-					echo "Please install git using your package manager." >&2
-					exit 1
+					install_git_linux
 					;;
 			esac
 		else
