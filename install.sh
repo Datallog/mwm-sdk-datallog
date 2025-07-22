@@ -51,6 +51,10 @@ install_git_linux() {
 		. /etc/os-release
 		case "$ID" in
 			ubuntu|pop|neon|zorin|tuxedo|debian|elementary|galliumos|linuxmint)
+				sudo apt-get update || {
+					echo "Failed to update apt package index. Please check your apt installation."
+					exit 1
+				}
 				sudo apt-get install -y git || {
 					echo "Failed to install git using apt. Please check your apt installation."
 					exit 1
@@ -63,30 +67,50 @@ install_git_linux() {
 				}
 				;;
 			ol)
+				sudo dnf update -y || {
+					echo "Failed to update dnf package index. Please check your dnf installation."
+					exit 1
+				}
 				sudo dnf install -y git || {
 					echo "Failed to install git using dnf. Please check your dnf installation."
 					exit 1
 				}
 				;;
 			rhel|miraclelinux)
+				sudo dnf update -y || {
+					echo "Failed to update dnf package index. Please check your dnf installation."
+					exit 1
+				}
 				sudo dnf install -y git || {
 					echo "Failed to install git using dnf. Please check your dnf installation."
 					exit 1
 				}
 				;;
 			fedora)
+				sudo dnf update -y || {
+					echo "Failed to update dnf package index. Please check your dnf installation."
+					exit 1
+				}
 				sudo dnf install -y git || {
 					echo "Failed to install git using dnf. Please check your dnf installation."
 					exit 1
 				}
 				;;
 			rocky|almalinux|nobara|openmandriva|sangoma|risios|cloudlinux|alinux|fedora-asahi-remix)
+				sudo dnf update -y || {
+					echo "Failed to update dnf package index. Please check your dnf installation."
+					exit 1
+				}
 				sudo dnf install -y git || {
 					echo "Failed to install git using dnf. Please check your dnf installation."
 					exit 1
 				}
 				;;
 			amzn)
+				sudo yum update -y || {
+					echo "Failed to update yum package index. Please check your yum installation."
+					exit 1
+				}
 				sudo yum install -y git || {
 					echo "Failed to install git using yum. Please check your yum installation."
 					exit 1
@@ -94,18 +118,22 @@ install_git_linux() {
 				;;
 			
 			arch|archarm|endeavouros|blendos|garuda|archcraft|cachyos)
-				sudo pacman -S --noconfirm git || {
+				sudo pacman -Syyy --noconfirm git || {
 					echo "Failed to install git using pacman. Please check your pacman installation."
 					exit 1
 				}
 				;;
 			manjaro|manjaro-arm|biglinux)
-				sudo pacman -S --noconfirm git || {
+				sudo pacman -Syyy  --noconfirm git || {
 					echo "Failed to install git using pacman. Please check your pacman installation."
 					exit 1
 				}
 				;;
 			osmc)
+				sudo apt-get update || {
+					echo "Failed to update apt package index. Please check your apt installation."
+					exit 1
+				}
 				sudo apt-get install -y git || {
 					echo "Failed to install git using apt. Please check your apt installation."
 					exit 1
