@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 set -e
-set -x
 colorize() {
     if [ -t 1 ]; then
         printf "\e[%sm%s\e[m" "$1" "$2"
@@ -49,7 +48,7 @@ main() {
 		fi
 	fi
 
-	if "$HAS_GIT" = false; then
+	if [ "$HAS_GIT" = false ]; then
 		if command -v uname >/dev/null 2>&1; then
 			case "$(uname)" in
 				Darwin)
