@@ -180,7 +180,7 @@ if [ "$CAN_ROOT" != "1" ]; then
     exit 1
 fi
 
-cd $(dirname "$0")/../runtime-installers
+cd $DATALLOG_ROOT/runtime-installers
 OS_UNSUPPORTED=
 case "$OS" in
     ubuntu)
