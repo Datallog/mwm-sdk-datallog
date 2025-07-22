@@ -57,7 +57,7 @@ main() {
 						echo "Please install Homebrew from https://brew.sh/" >&2
 						exit 1
 					fi
-					EXPORT NONINTERACTIVE=1
+					export NONINTERACTIVE=1
 					brew install git || {
 						echo "Failed to install git using Homebrew. Please check your Homebrew installation."
 						exit 1
