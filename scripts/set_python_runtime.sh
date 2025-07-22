@@ -15,7 +15,7 @@ install_pyenv_macos() {
     echo "Installing pyenv using Homebrew..."
     brew update
     export NONINTERACTIVE=1
-    brew install pyenv || {
+    brew install readline xz pyenv || {
         echo "Failed to install pyenv using Homebrew. Please check your Homebrew installation."
         exit 1
     }
@@ -131,7 +131,7 @@ set_python_executable() {
     fi
     
 
-    found_python_path="${PYENV_ROOT}/versions/${latest_python_minor_version}/bin/${PYENV_TARGET_COMMAND_ALIAS}"
+    found_python_path="$(pyenv root)/versions/${latest_python_minor_version}/bin/${PYENV_TARGET_COMMAND_ALIAS}"
     if [ ! -x "$found_python_path" ]; then
         log_error "The expected Python executable '$found_python_path' does not exist or is not executable."
         return 1
