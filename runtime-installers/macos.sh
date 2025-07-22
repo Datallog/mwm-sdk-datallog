@@ -80,5 +80,9 @@ hdiutil attach "$DMG_PATH"
 echo "Installing Docker Desktop. You may be prompted for your password."
 sudo "$DOCKER_VOLUME/Docker.app/Contents/MacOS/install"
 
-# The cleanup function will handle unmounting and removing the DMG
+cleanup
 
+open -a Docker
+
+echo "Docker Desktop is launching. Please complete the setup in the GUI, then press Enter to continue."
+read -r
