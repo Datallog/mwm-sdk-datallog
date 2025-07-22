@@ -303,7 +303,7 @@ def conteiner_check_if_image_exists(
         return "No"
     _, stdout, _ = conteiner_exec(
         [
-            "docker",
+            settings.conteiner_engine,
             "inspect",
             "-f",
             "{{ .Created }}",
