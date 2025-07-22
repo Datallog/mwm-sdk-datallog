@@ -82,9 +82,3 @@ sudo "$DOCKER_VOLUME/Docker.app/Contents/MacOS/install"
 
 # The cleanup function will handle unmounting and removing the DMG
 
-# Launch Docker Desktop
-echo "Installation complete. Launching Docker Desktop..."
-
-
-echo "You may need to open a new terminal for the 'docker' command to be available."
-

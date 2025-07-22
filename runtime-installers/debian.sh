@@ -11,6 +11,7 @@ set -e
 echo "Updating package echormation..."
 sudo apt-get update
 echo "Package echormation updated."
+declare DATTALLOG_REQUIRE_REBOOT=""
 
 # --- Step 2: Install Prerequisites ---
 echo "Checking and installing prerequisite packages..."
@@ -76,6 +77,10 @@ else
     echo "User '$USER' added to the 'docker' group."
     echo "You may need to log out and log back in for the group changes to take effect."
     echo "Alternatively, you can run: newgrp docker"
+    if command -v newgrp &> /dev/null; then
+        newgrp docker
+    fi
+    DATTALLOG_REQUIRE_REBOOT="true"
 fi
 
 # --- Step 7: Enable and Start Docker Service ---
@@ -89,7 +94,4 @@ else
     sudo systemctl start docker
     echo "Docker service has been enabled and started."
 fi
-
-echo "Docker installation and setup is complete!"
-echo "You can test your installation by running: docker run hello-world"
 

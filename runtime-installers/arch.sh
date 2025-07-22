@@ -47,25 +47,21 @@ add_user_to_docker_group() {
         # The -aG options append the user to the supplementary group.
         sudo usermod -aG docker "$USER"
         echo "User '$USER' added to the 'docker' group."
-        echo "You need to log out and log back in for the group changes to take effect."
+        if command -v newgrp &> /dev/null; then
+            newgrp docker
+        fi
     else
         echo "User '$USER' is already in the 'docker' group. Skipping."
     fi
 }
 
-# --- Main Execution ---
-main() {
+arch_main() {
     echo "Starting Docker setup process for Arch Linux..."
     
     install_docker
     enable_docker_service
     start_docker_service
     add_user_to_docker_group
-    
-    echo "Docker setup script finished."
-    echo "You can verify the installation by running: docker run hello-world"
-    echo "Remember to log out and back in if your user was just added to the docker group."
 }
 
-# --- Run the main function ---
-main
+arch_main

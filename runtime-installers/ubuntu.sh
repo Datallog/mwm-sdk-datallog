@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+declare DATTALLOG_REQUIRE_REBOOT=""
 
 # --- 1. Set up the repository ---
 # Update the apt package index and install packages to allow apt to use a repository over HTTPS.
@@ -41,5 +42,13 @@ sudo systemctl start docker.service
 
 # Add the current user to the 'docker' group to run Docker commands without sudo.
 # This avoids the need to use 'sudo' for every docker command.
-echo "Adding current user ($USER) to the 'docker' group..."
-sudo usermod -aG docker $USER
+if groups "$USER" | grep -q '\bdocker\b'; then
+    echo "User '$USER' is already in the 'docker' group."
+else
+    echo "Adding current user ($USER) to the 'docker' group..."
+    sudo usermod -aG docker $USER
+    if command -v newgrp &> /dev/null; then
+        newgrp docker
+    fi
+    DATTALLOG_REQUIRE_REBOOT="true"
+fi

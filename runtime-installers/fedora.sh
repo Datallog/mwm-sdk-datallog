@@ -6,6 +6,7 @@ set -e
 warn() {
     echo "WARN: $1"
 }
+declare DATTALLOG_REQUIRE_REBOOT=""
 
 # --- Main Logic ---
 
@@ -30,7 +31,7 @@ if command -v rpm-ostree &> /dev/null; then
         echo "Podman not found. Installing with rpm-ostree..."
         if rpm-ostree install podman; then
             echo "Podman has been layered echofully."
-            warn "A system reboot is required to apply the changes. Please run 'systemctl reboot'."
+            DATTALLOG_REQUIRE_REBOOT="true"
         else
             echo "ERROR: Failed to install Podman with rpm-ostree."
             exit 1
@@ -77,8 +78,7 @@ echo '{"conteiner_engine":"podman"}' > $DATALLOG_ROOT/settings.json
 if command -v podman &> /dev/null; then
     PODMAN_VERSION=$(podman --version)
 else
-    # This might happen on Silverblue if a reboot hasn't occurred yet.
-    warn "Podman command not found. If you are on Silverblue, please reboot your system."
+    DATTALLOG_REQUIRE_REBOOT="true"
 fi
 
 echo "Script finished."
