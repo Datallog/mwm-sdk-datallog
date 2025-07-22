@@ -38,6 +38,8 @@ if command -v rpm-ostree &> /dev/null; then
         fi
     fi
 
+    rpm-ostree install curl git gcc make zlib
+
 else
     # --- Fedora Workstation (dnf-based) Logic ---
     echo "Fedora Workstation (or dnf-based variant) detected."
@@ -70,6 +72,11 @@ else
             # This is not a fatal error, so we won't exit.
         fi
     fi
+    echo "Podman installation and setup completed."
+    
+    echo Instaling dependencies... 
+    dnf install  --assumeyes curl git gcc make zlib
+
 fi
 
 # 3. Final Verification
