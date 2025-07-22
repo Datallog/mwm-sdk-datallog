@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-
+set -x
 colorize() {
     if [ -t 1 ]; then
         printf "\e[%sm%s\e[m" "$1" "$2"
@@ -46,7 +46,6 @@ main() {
 		if command -v uname >/dev/null 2>&1; then
 			case "$(uname)" in
 				Darwin)
-					OS="macos"
 					if ! command -v brew 1>/dev/null 2>&1; then
 						echo "datallog: Homebrew is not installed, can't continue." >&2
 						echo "Please install Homebrew from https://brew.sh/" >&2
