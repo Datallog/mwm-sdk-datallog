@@ -27,6 +27,18 @@ for pkg in $PRE_REQS; do
 done
 echo "All prerequisite packages are installed."
 
+CURL=
+if type curl >/dev/null; then
+    CURL="curl -fsSL"
+elif type wget >/dev/null; then
+    CURL="wget -q -O-"
+fi
+if [ -z "$CURL" ]; then
+    echo "The installer needs either curl or wget to download files."
+    echo "Please install either curl or wget to proceed."
+    exit 1
+fi
+
 # --- Step 3: Add Docker's Official GPG Key ---
 echo "Checking for Docker's GPG key..."
 GPG_KEY_PATH="/usr/share/keyrings/docker-archive-keyring.gpg"
@@ -35,7 +47,7 @@ if [ -f "$GPG_KEY_PATH" ]; then
 else
     echo "Adding Docker's official GPG key..."
     sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    $CURL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     sudo chmod a+r /etc/apt/keyrings/docker.gpg
     echo "Docker's GPG key added."
 fi

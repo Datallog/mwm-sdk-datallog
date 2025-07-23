@@ -44,7 +44,18 @@ install_pyenv_linux() {
         return 1
     fi
 
-    curl -fsSL https://pyenv.run | bash
+    CURL=
+    if type curl >/dev/null; then
+        CURL="curl -fsSL"
+    elif type wget >/dev/null; then
+        CURL="wget -q -O-"
+    fi
+    if [ -z "$CURL" ]; then
+        echo "The installer needs either curl or wget to download files."
+        echo "Please install either curl or wget to proceed."
+        exit 1
+    fi
+    $CURL https://pyenv.run | bash
     export PYENV_ROOT="$HOME/.pyenv"
     export PATH="$PYENV_ROOT/bin:$PATH"
     eval "$(pyenv init - bash)"
