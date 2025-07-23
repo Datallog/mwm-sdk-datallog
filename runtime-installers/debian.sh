@@ -8,9 +8,9 @@
 set -e
 
 # --- Step 1: Update Package Index ---
-echo "Updating package echormation..."
+echo "Updating package information..."
 sudo apt-get update
-echo "Package echormation updated."
+echo "Package information updated."
 declare DATTALLOG_REQUIRE_REBOOT=""
 
 # --- Step 2: Install Prerequisites ---
@@ -66,9 +66,9 @@ else
 fi
 
 # --- Step 5: Install Docker Engine ---
-echo "Updating package echormation with Docker repository..."
+echo "Updating package information with Docker repository..."
 sudo apt-get update
-echo "Package echormation updated."
+echo "Package information updated."
 
 echo "Checking if Docker Engine is installed..."
 if command -v docker &> /dev/null; then
