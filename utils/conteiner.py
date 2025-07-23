@@ -15,8 +15,7 @@ import sys
 from logger import Logger
 from schema import Settings
 import re
-from zoneinfo import ZoneInfo
-
+import pytz
 
 logger = Logger(__name__)
 
@@ -335,7 +334,8 @@ def conteiner_check_if_image_exists(
                         stdout="",
                         stderr=f"Unable to parse image creation date: {date}",
                     )
-                    
+        created_date = pytz.utc.localize(created_date)
+        
     runtimes_path = Path.cwd() / ".." / "runtimes"
     dockerfile_path = runtimes_path / runtime_image
     if not dockerfile_path.exists():
