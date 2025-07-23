@@ -1,5 +1,4 @@
 import json
-from math import perm
 import os
 import subprocess
 from pathlib import Path
@@ -15,6 +14,9 @@ from tempfile import NamedTemporaryFile
 import sys
 from logger import Logger
 from schema import Settings
+import re
+from zoneinfo import ZoneInfo
+
 
 logger = Logger(__name__)
 
@@ -320,9 +322,20 @@ def conteiner_check_if_image_exists(
         try:
             created_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
-            # Fallback for ISO 8601 with timezone offset (Python 3.7+)
-            created_date = datetime.fromisoformat(date.replace("Z", "+00:00"))
-
+            try:
+                created_date = datetime.fromisoformat(date.replace("Z", "+00:00"))
+            except ValueError:
+                try:
+                    date = re.sub(r"\.\d+[\s\S]*?$", "Z", date)  # Remove fractional seconds and trailing text
+                    if 'T' not in date:
+                        date = date.replace(" ", "T")
+                    created_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+                except ValueError:
+                    raise DatallogRuntimeError(
+                        stdout="",
+                        stderr=f"Unable to parse image creation date: {date}",
+                    )
+                    
     runtimes_path = Path.cwd() / ".." / "runtimes"
     dockerfile_path = runtimes_path / runtime_image
     if not dockerfile_path.exists():
