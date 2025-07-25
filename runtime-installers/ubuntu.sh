@@ -49,5 +49,5 @@ else
     DATTALLOG_REQUIRE_REBOOT="true"
 fi
 
-
-sudo apt update && sudo apt install build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config liblzma-dev uuid-dev
+export DEBIAN_FRONTEND=noninteractive
+sudo apt update && sudo apt install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev curl libbz2-dev pkg-config liblzma-dev uuid-dev
