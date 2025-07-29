@@ -334,8 +334,10 @@ def conteiner_check_if_image_exists(
                         stdout="",
                         stderr=f"Unable to parse image creation date: {date}",
                     )
+
+    if created_date.tzinfo is None:
         created_date = pytz.utc.localize(created_date)
-        
+
     runtimes_path = Path.cwd() / ".." / "runtimes"
     dockerfile_path = runtimes_path / runtime_image
     if not dockerfile_path.exists():
