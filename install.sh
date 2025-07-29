@@ -597,33 +597,42 @@ install_pyenv_linux() {
         echo "Please install either curl or wget to proceed."
         exit 1
     fi
+
+    if [ -z "$PYENV_ROOT" ]; then
+        PYENV_ROOT="$HOME/.pyenv"
+    fi
+
+    if ! command -v pyenv &>/dev/null; then
+        $CURL https://pyenv.run | bash
     
-    $CURL https://pyenv.run | bash
-    
-    if [ -n "$PYENV_ROOT" ]; then
-        export PYENV_ROOT="$PYENV_ROOT"
+        if [ -n "$PYENV_ROOT" ]; then
+            export PYENV_ROOT="$PYENV_ROOT"
+        else
+            export PYENV_ROOT="$HOME/.pyenv"
+        fi
+        
+        
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init - bash)"
+        
+        if command -v bash &>/dev/null; then
+            echo 'export PYENV_ROOT="$HOME/.pyenv"' >>~/.bashrc
+            echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >>~/.bashrc
+            echo 'eval "$(pyenv init - bash)"' >>~/.bashrc
+        fi
+        
+        if command -v zsh &>/dev/null; then
+            echo 'export PYENV_ROOT="$HOME/.pyenv"' >>~/.zshrc
+            echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >>~/.zshrc
+            echo 'eval "$(pyenv init - zsh)"' >>~/.zshrc
+        fi
+        
+        if command -v fish &>/dev/null; then
+            fish -c "set -Ux PYENV_ROOT $PYENV_ROOT; fish_add_path \$PYENV_ROOT/bin"
+        fi
+        echo "Pyenv has been installed successfully."
     else
-        export PYENV_ROOT="$HOME/.pyenv"
-    fi
-    
-    
-    export PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init - bash)"
-    
-    if command -v bash &>/dev/null; then
-        echo 'export PYENV_ROOT="$HOME/.pyenv"' >>~/.bashrc
-        echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >>~/.bashrc
-        echo 'eval "$(pyenv init - bash)"' >>~/.bashrc
-    fi
-    
-    if command -v zsh &>/dev/null; then
-        echo 'export PYENV_ROOT="$HOME/.pyenv"' >>~/.zshrc
-        echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >>~/.zshrc
-        echo 'eval "$(pyenv init - zsh)"' >>~/.zshrc
-    fi
-    
-    if command -v fish &>/dev/null; then
-        fish -c "set -Ux PYENV_ROOT $PYENV_ROOT; fish_add_path \$PYENV_ROOT/bin"
+        echo "Pyenv is already installed. Skipping installation."
     fi
 }
 
@@ -680,7 +689,14 @@ main() {
     fi
     
     if [ -n "$DATALLOG_INSTALL_PYENV" ]; then
-        $DATALLOG_INSTALL_PYENV
+        $DATALLOG_INSTALL_PYENV 
+        if [ -n "$PYENV_ROOT" ]; then
+            export PYENV_ROOT="$PYENV_ROOT"
+        else
+            export PYENV_ROOT="$HOME/.pyenv"
+        fi
+        export PATH="$PYENV_ROOT/bin:$PATH"
+        eval "$(pyenv init - bash)"
     fi
     
     # Start and enable Docker service if applicable
