@@ -218,7 +218,7 @@ detect_os() {
 ##########################
 
 pacman_install_deps() {
-    package_list="git curl docker base base-devel gcc make zlib bzip2 openssl xz readline sqlite libffi findutils"
+    package_list="git curl docker docker-buildx base base-devel gcc make zlib bzip2 openssl xz readline sqlite libffi findutils"
     package_to_install=""
     for pkg in $package_list; do
         if ! pacman -Q "$pkg" &>/dev/null; then
