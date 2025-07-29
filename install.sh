@@ -494,8 +494,8 @@ install_docker_macos() {
     
     open -a Docker
     
-    echo "Docker Desktop is launching. Please complete the setup in the GUI, then press Enter to continue."
-    read -r
+    echo "Docker Desktop is launching. Please complete the setup in the GUI, then."
+    read -p "Press enter to continue"
 }
 
 
