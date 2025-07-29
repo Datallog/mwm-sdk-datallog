@@ -21,6 +21,7 @@ from install_local_python import (
     install_local_python_packages,
 )
 from settings import load_settings
+from parser_deploy_ini import parse_deploy_ini
 
 
 logger = Logger(__name__)
@@ -75,41 +76,50 @@ def init(args: Namespace) -> None:
     try:
         settings   = load_settings()
         project_name = args.name.strip() if args.name else ""
-        if len(project_name) == 0:
-            project_name = input("Enter the name of the new project: ").strip()
-            if len(project_name) == 0:
-                raise DatallogError("Project name cannot be empty.")
-
-        if not validate_name(project_name):
-            raise DatallogError(
-                """Invalid project name. The name must follow these rules:
-- Must start with a letter (a-z, A-Z)
-- Can contain letters, digits (0-9), underscores (_), and hyphens (-)
-- Must be between 3 and 50 characters long."""
-            )
-        deploy_path = get_user_path() / project_name
-        if deploy_path.exists():
-            raise DatallogError(
-                f"Project '{project_name}' already exists at {deploy_path}."
-            )
-        deploy_path.mkdir(parents=True, exist_ok=True)
+        deploy_path = get_user_path()
+        dirname = args.name.strip() if args.name.strip() else deploy_path.name
+        deploy_ini_path = deploy_path / "deploy.ini"
         spinner = Halo(text="Creating deploy", spinner="dots")
+
+        if not deploy_ini_path.exists():
+            if len(project_name) == 0:
+                project_name = input(f"Enter the name of the new project or press enter to use ({dirname}): ").strip()
+                if len(project_name) == 0:
+                    project_name = dirname
+
+            if not validate_name(project_name):
+                raise DatallogError(
+                    """Invalid project name. The name must follow these rules:
+    - Must start with a letter (a-z, A-Z)
+    - Can contain letters, digits (0-9), underscores (_), and hyphens (-)
+    - Must be between 3 and 50 characters long."""
+                )
+            runtime = "python-3.10"
+            region = "us-east-1"
+            create_deploy_config(
+                name=project_name,
+                runtime=runtime,
+                region=region,
+                output_path=deploy_path / "deploy.ini",
+            )
+            base_project_files = Path(__file__).parent.parent.parent / "deploy-base"
+            spinner.text = "Copying base project files"  # type: ignore
+
+            shutil.copytree(base_project_files, deploy_path, dirs_exist_ok=True)
+        else:
+            deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
+
+            logger.info("Parsed deploy.ini successfully.")
+            
+            runtime = deploy_ini.get("deploy", "runtime")
+            region = deploy_ini.get("deploy", "region")
+            logger.warning(
+                f"Project '{project_name}' already exists. Skipping deploy.ini creation."
+            )
+            spinner.succeed("Deploy configuration already exists, using existing config")  # type: ignore
+
         spinner.start()  # type: ignore
 
-        runtime = "python-3.10"
-        region = "us-east-1"
-
-        create_deploy_config(
-            name=project_name,
-            runtime=runtime,
-            region=region,
-            output_path=deploy_path / "deploy.ini",
-        )
-
-        base_project_files = Path(__file__).parent.parent.parent / "deploy-base"
-        spinner.text = "Copying base project files"  # type: ignore
-
-        shutil.copytree(base_project_files, deploy_path, dirs_exist_ok=True)
 
         python_version = runtime[(len("python-")) :].strip()
 
