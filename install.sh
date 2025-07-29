@@ -564,7 +564,7 @@ add_user_to_docker_group() {
         # The -aG options append the user to the supplementary group.
         $DATALLOG_SUDO usermod -aG docker "$USER"
         echo "User '$USER' added to the 'docker' group."
-        $DATALLOG_REQUIRE_REBOOT="true"
+        DATALLOG_REQUIRE_REBOOT="true"
         if command -v newgrp &> /dev/null; then
             newgrp docker
         fi
