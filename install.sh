@@ -588,7 +588,7 @@ checkout() {
 
 install_pyenv_linux() {
     # check if there is curl
-    log_debug "Attempting to install pyenv and Python $PYENV_TARGET_MAJOR_MINOR using curl."
+    echo "Attempting to install pyenv and Python $PYENV_TARGET_MAJOR_MINOR using curl."
     if ! command -v curl &>/dev/null; then
         log_error "curl is required to install datallog. Please install curl and try again."
         return 1
