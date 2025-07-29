@@ -548,7 +548,6 @@ systemd_enable_docker_service() {
 	echo "Enabling Docker service to start on boot..."
 	$DATALLOG_SUDO systemctl enable docker.service || true
 	echo "Docker service has been enabled."
-    fi
 }
 
 systemd_start_docker_service() {
