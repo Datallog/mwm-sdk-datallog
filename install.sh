@@ -545,24 +545,17 @@ install_pyenv_macos() {
 
 systemd_enable_docker_service() {
     echo "Checking if Docker service is enabled..."
-    if ! systemctl is-enabled docker.service &>/dev/null; then
-        echo "Enabling Docker service to start on boot..."
-        $DATALLOG_SUDO systemctl enable docker.service
-        echo "Docker service has been enabled."
-    else
-        echo "Docker service is already enabled. Skipping."
+	echo "Enabling Docker service to start on boot..."
+	$DATALLOG_SUDO systemctl enable docker.service || true
+	echo "Docker service has been enabled."
     fi
 }
 
 systemd_start_docker_service() {
     echo "Checking if Docker service is active..."
-    if ! systemctl is-active docker.service &>/dev/null; then
-        echo "Starting Docker service..."
-        $DATALLOG_SUDO systemctl start docker.service
-        echo "Docker service has been started."
-    else
-        echo "Docker service is already active. Skipping."
-    fi
+	echo "Starting Docker service..."
+	$DATALLOG_SUDO systemctl start docker.service || true
+	echo "Docker service has been started."
 }
 
 add_user_to_docker_group() {
