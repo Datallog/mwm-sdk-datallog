@@ -20,7 +20,7 @@ declare DATALLOG_MACOS_TEMP_DIR="/tmp"
 # Name for the downloaded DMG file
 declare DATALLOG_MACOS_DMG_FILE="Docker.dmg"
 # Full path for the downloaded file
-declare DATALLOG_MACOS_DMG_PATH="$TEMP_DIR/$DMG_FILE"
+declare DATALLOG_MACOS_DMG_PATH="$DATALLOG_MACOS_TEMP_DIR/$DATALLOG_MACOS_DMG_FILE"
 # The volume name after mounting the DMG
 declare DATALLOG_MACOS_DOCKER_VOLUME="/Volumes/Docker"
 
