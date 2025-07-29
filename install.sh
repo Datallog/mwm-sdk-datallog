@@ -687,17 +687,29 @@ main() {
     if [ -n "$DATALLOG_INSTALL_DOCKER" ]; then
         $DATALLOG_INSTALL_DOCKER
     fi
-    
+
     if [ -n "$DATALLOG_INSTALL_PYENV" ]; then
         $DATALLOG_INSTALL_PYENV 
-        if [ -n "$PYENV_ROOT" ]; then
-            export PYENV_ROOT="$PYENV_ROOT"
-        else
+    fi
+
+    if [ -z "$PYENV_ROOT" ]; then
+        PYENV_ROOT="$HOME/.pyenv"
+    fi
+
+    if ! command -v pyenv &>/dev/null; then
+        if ! [ -d "$PYENV_ROOT" ]; then
             export PYENV_ROOT="$HOME/.pyenv"
         fi
+
+        if ! [ -d "$PYENV_ROOT" ]; then
+            echo "Pyenv is not installed. Installing pyenv..."
+        fi
+
         export PATH="$PYENV_ROOT/bin:$PATH"
         eval "$(pyenv init - bash)"
     fi
+
+
     
     # Start and enable Docker service if applicable
     if [ -n "$DATALLOG_START_DOCKER_SERVICE" ]; then
