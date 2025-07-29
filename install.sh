@@ -28,14 +28,6 @@ export DEBIAN_FRONTEND=noninteractive
 
 
 detect_os() {
-    case "$TRACK" in
-        stable|unstable)
-        ;;
-        *)
-            echo "unsupported track $TRACK"
-            exit 1
-        ;;
-    esac
 
     OS=""
     VERSION=""
