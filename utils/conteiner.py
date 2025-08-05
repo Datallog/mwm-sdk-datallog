@@ -298,8 +298,7 @@ def conteiner_generate_hash(
         
         if requirements_hash and app_hash:
             break
-    print(f"Requirements hash: {requirements_hash}")
-    print(f"Application hash: {app_hash}")
+
     if not requirements_hash or not app_hash:
         raise DatallogRuntimeError(
             stdout=stdout,

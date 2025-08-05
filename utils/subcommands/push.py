@@ -163,7 +163,7 @@ def push(args: Namespace) -> None:
             send_apps = False
             applications_build_id = response_hash_json["app_build"]["id"]
 
-        if send_requirements or True:
+        if send_requirements:
             spinner.start(text="Uploading requirements")  # type: ignore
 
             response_presinged_requirements = requests.get(
