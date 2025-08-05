@@ -259,7 +259,7 @@ def conteiner_install_from_packages_list(
 
 def conteiner_generate_hash(
     settings: Settings, runtime_image: str, env_dir: Path, deploy_dir: Path
-) -> Tuple[subprocess.Popen[str], str, str]:
+) -> Tuple[str, str]:
     """
     Generate a hash of the environment directory.
 
@@ -267,10 +267,10 @@ def conteiner_generate_hash(
         deploy_dir (Path): Directory of the virtual environment.
 
     Returns:
-        str: MD5 hash of the environment directory.
+        Tuple[str, str]: A tuple containing the requirements hash and the application hash.
     """
 
-    result: Tuple[subprocess.Popen[str], str, str] = conteiner_run(
+    (_, stdout, _) = conteiner_run(
         settings=settings,
         runtime_image=runtime_image,
         volumes=[
@@ -279,7 +279,34 @@ def conteiner_generate_hash(
         ],
         command="/gen_hash.sh",
     )
-    return result
+    
+    stdout = stdout
+    if not stdout:
+        raise DatallogRuntimeError(
+            stdout="",
+            stderr="Failed to generate hash.",
+        )
+
+    requirements_hash = None
+    app_hash = None
+
+    for line in stdout.splitlines():
+        if line.startswith("DATALLOG_REQUIREMENTS_HASH="):
+            requirements_hash = line.split("=", 1)[1].strip()
+        elif line.startswith("DATALLOG_APP_HASH="):
+            app_hash = line.split("=", 1)[1].strip()
+        
+        if requirements_hash and app_hash:
+            break
+    print(f"Requirements hash: {requirements_hash}")
+    print(f"Application hash: {app_hash}")
+    if not requirements_hash or not app_hash:
+        raise DatallogRuntimeError(
+            stdout=stdout,
+            stderr="Failed to parse hash output. Expected 'DATALLOG_REQUIREMENTS_HASH' and 'DATALLOG_APP_HASH'.",
+        )
+
+    return (requirements_hash, app_hash)
 
 
 def conteiner_check_if_image_exists(

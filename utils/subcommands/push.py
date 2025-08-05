@@ -85,18 +85,16 @@ def push(args: Namespace) -> None:
         )
         spinner.succeed("Packages installed successfully")  # type: ignore
         spinner.start(text="Generating deploy hash")  # type: ignore
-        _, hash_stdout, _ = conteiner_generate_hash(
+        (requirement_hash, app_hash) = conteiner_generate_hash(
             settings=settings,
             runtime_image=runtime,
             env_dir=env_path,
             deploy_dir=deploy_path,
         )
         spinner.succeed("Deploy hash generated successfully")  # type: ignore
-
-        (requirement_hash, app_hash) = hash_stdout.strip().split(sep="\n")
         spinner.start(text="Checking current deploy hashes")  # type: ignore
         response_hash = requests.post(
-            f"{datallog_url}/consult-hashes",
+            f"{datallog_url}/api/sdk/consult-hashes",
             json={
                 "deploy_name": name,
                 "applications_hash": app_hash,
@@ -119,7 +117,7 @@ def push(args: Namespace) -> None:
             logger.info("Creating new deploy as it does not exist.")
             spinner.start(text="Creating new deploy")  # type: ignore
             response_create_app = requests.post(
-                f"{datallog_url}/create-deploy",
+                f"{datallog_url}/api/sdk/create-deploy",
                 json={
                     "docker_version": runtime,
                     "name": name,
@@ -165,11 +163,11 @@ def push(args: Namespace) -> None:
             send_apps = False
             applications_build_id = response_hash_json["app_build"]["id"]
 
-        if send_requirements:
+        if send_requirements or True:
             spinner.start(text="Uploading requirements")  # type: ignore
 
             response_presinged_requirements = requests.get(
-                f"{datallog_url}/get-deploy-requirements-presigned-url",
+                f"{datallog_url}/api/sdk/get-deploy-requirements-presigned-url",
                 params={
                     "deploy_name": name,
                 },
@@ -209,7 +207,7 @@ def push(args: Namespace) -> None:
                 )
             )
             response_notify_requirements_upload = requests.post(
-                f"{datallog_url}/confirm-requirements-upload",
+                f"{datallog_url}/api/sdk/confirm-requirements-upload",
                 json={
                     "deploy_name": name,
                     "url_s3": presigned_url,
@@ -239,7 +237,7 @@ def push(args: Namespace) -> None:
         spinner.start(text="Waiting for requirements image build to finish")  # type: ignore
         while status == "BUILDING":
             response_requirements_build_status = requests.get(
-                f"{datallog_url}/requirements-build-status/{requirements_build_id}",
+                f"{datallog_url}/api/sdk/requirements-build-status/{requirements_build_id}",
                 headers=token,
             )
             requirements_build_status_json = response_requirements_build_status.json()
@@ -264,7 +262,7 @@ def push(args: Namespace) -> None:
 
                 temp_file.seek(0)
                 response_presinged_apps = requests.get(
-                    f"{datallog_url}/get-deploy-applications-presigned-url",
+                    f"{datallog_url}/api/sdk/get-deploy-applications-presigned-url",
                     params={
                         "deploy_name": name,
                     },
@@ -301,7 +299,7 @@ def push(args: Namespace) -> None:
             )
             logger.info("Waiting for applications build to finish...")
             response_notify_apps_upload = requests.post(
-                f"{datallog_url}/confirm-applications-upload",
+                f"{datallog_url}/api/sdk/confirm-applications-upload",
                 json={
                     "deploy_name": name,
                     "url_s3": presigned_url,
@@ -329,7 +327,7 @@ def push(args: Namespace) -> None:
 
         while status == "BUILDING":
             response_apps_build_status = requests.get(
-                f"{datallog_url}/applications-build-status/{applications_build_id}",
+                f"{datallog_url}/api/sdk/applications-build-status/{applications_build_id}",
                 headers=token,
             )
             apps_build_status_json = response_apps_build_status.json()

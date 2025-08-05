@@ -421,7 +421,7 @@ dnf_install_deps() {
     
     if [ -n "$package_to_install" ]; then
         echo "Installing missing packages: $package_to_install"
-        sudo dnf install -y $package_to_install
+        $DATALLOG_SUDO dnf install -y $package_to_install
         echo "All required packages have been installed."
     else
         echo "All required packages are already installed. Skipping installation."
@@ -488,7 +488,7 @@ install_docker_macos() {
     # Install Docker.app to the /Applications folder
     # This command will prompt for your password
     echo "Installing Docker Desktop. You may be prompted for your password."
-    sudo "$DATALLOG_MACOS_DOCKER_VOLUME/Docker.app/Contents/MacOS/install"
+    $DATALLOG_SUDO "$DATALLOG_MACOS_DOCKER_VOLUME/Docker.app/Contents/MacOS/install"
     
     cleanup_macos
     
