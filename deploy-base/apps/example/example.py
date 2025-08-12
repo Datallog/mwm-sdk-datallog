@@ -6,10 +6,10 @@ from datetime import datetime
 """
 This application is an example of how to use the Datallog framework to create a simple data processing pipeline.
 
-To run this application, you need run `datallog run example`
+To run this application, you need to run `datallog run example`.
 
-To push the applications to the Datallog service, use `datallog push`.
-
+You can specify the initial input through the `seed.json` file or by passing the `--seed` option with a JSON dictionary.
+E.g `datallog run example --seed '{"days": ["2023-01-01", "2022-01-01"]}'`.
 
 It retrieves the Astronomy Picture of the Day (APOD) from NASA's website for a list of specified dates.
 The application consists of three main steps:
@@ -34,7 +34,7 @@ def generate_urls(seed):
     seed_days = seed.get("days", [])
     dates = [datetime.strptime(day, "%Y-%m-%d") for day in seed_days]
 
-    date_strs = [date.strftime("%Y%m%d") for date in dates]
+    date_strs = [date.strftime("%y%m%d") for date in dates]
 
     urls = [
         "https://apod.nasa.gov/apod/ap{}.html".format(date_str)

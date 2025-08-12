@@ -230,7 +230,7 @@ pacman_install_deps() {
     if [ -n "$package_to_install" ]; then
         echo "Installing missing packages: $package_to_install"
         set -e
-        $DATALLOG_SUDO pacman -Syu --noconfirm $package_to_install
+        $DATALLOG_SUDO pacman -Syy --noconfirm $package_to_install
         set +e
         echo "All required packages have been installed."
     else
@@ -244,7 +244,6 @@ pacman_install_deps() {
 
 install_deps_ubuntu() {
     echo "Updating package index and installing prerequisites..."
-    $DATALLOG_SUDO apt-get update
     
     package_list="ca-certificates git curl build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
     package_to_install=""

@@ -1,3 +1,4 @@
 {
+  "_comment": "This is a seed file used as an argument to the core step.",
   "days": ["2023-01-01", "2022-01-01", "2021-01-01", "2020-01-01"]
 }
