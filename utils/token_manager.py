@@ -6,7 +6,7 @@ import base64
 import pathlib
 from binascii import Error as Base64Error
 from logger import Logger
-from errors import InvalidLoginToken
+from errors import InvalidLoginTokenError
 
 logger = Logger(__name__)
 
@@ -116,7 +116,6 @@ def unsafe_save_token(token: str) -> None:
     try:
         with open(unsafe_token_file(), "w") as f:
             f.write(token)
-        print(f"Token saved successfully in {pathlib.Path.cwd() / 'token.txt'}")
     except Exception as e:
         print(f"An error occurred while saving the token: {e}")
 
@@ -221,7 +220,7 @@ def decode_token(encoded_token: str) -> Dict[str, str]:
         decoded_bytes = base64.b64decode(encoded_token)
         token_length = 20
         if len(decoded_bytes) != 50:
-            raise InvalidLoginToken("Invalid token. Please check your token.")
+            raise InvalidLoginTokenError("Invalid token. Please check your token.")
 
         data = {
             "Authorization": "Token " + decoded_bytes[:token_length].hex().lower(),
@@ -229,5 +228,5 @@ def decode_token(encoded_token: str) -> Dict[str, str]:
         }
         return data
     except (ValueError, Base64Error) as e:
-        raise InvalidLoginToken(f"Invalid token. Please check your token.") from e
+        raise InvalidLoginTokenError(f"Invalid token. Please check your token.") from e
 

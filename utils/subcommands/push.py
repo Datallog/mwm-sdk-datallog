@@ -7,6 +7,7 @@ from time import sleep
 
 import requests
 from conteiner import (
+    Dict,
     conteiner_build,
     conteiner_check_if_image_exists,
     conteiner_generate_hash,
@@ -140,7 +141,8 @@ def push(args: Namespace) -> None:
                 in response_hash.headers.get("Content-Type", "").lower()
             ):
                 error_message = response_hash.json().get("detail", "Unknown error")
-                if "Invalid token" in error_message:
+                error_message_2 = response_hash.json().get("message", "Unknown error")
+                if "Invalid token" in error_message or "Forbidden" in error_message_2:
                     raise LoginRequiredError(
                         "Your token is invalid. Please log in first with `datallog login`."
                     )
@@ -154,12 +156,14 @@ def push(args: Namespace) -> None:
 
         requirements_build_id = None
         applications_build_id = None
+        app_hash_json = response_hash_json.get("app_build", {})
+        requirement_hash_json = response_hash_json.get("req_build", {})
 
-        if response_hash_json.get("req_build", {'exists': False})["exists"]:
+        if requirement_hash_json.get("exists", False) and requirement_hash_json.get("status", "NOT_FOUND") == "FAILED":
             send_requirements = False
             requirements_build_id = response_hash_json["req_build"]["id"]
 
-        if response_hash_json.get("app_build", {'exists': False})["exists"]:
+        if app_hash_json.get("exists", False) and app_hash_json.get("status", "NOT_FOUND") == "FAILED":
             send_apps = False
             applications_build_id = response_hash_json["app_build"]["id"]
 
@@ -235,12 +239,13 @@ def push(args: Namespace) -> None:
         logger.info(f"Requirements build ID: {requirements_build_id}")
         status = "BUILDING"
         spinner.start(text="Waiting for requirements image build to finish")  # type: ignore
+        requirements_build_status_json: Dict[str, str] = {}
         while status == "BUILDING":
             response_requirements_build_status = requests.get(
                 f"{datallog_url}/api/sdk/requirements-build-status/{requirements_build_id}",
                 headers=token,
             )
-            requirements_build_status_json = response_requirements_build_status.json()
+            requirements_build_status_json: Dict[str, str] = response_requirements_build_status.json()
             logger.info(
                 f"Requirements build status response: {requirements_build_status_json}"
             )
@@ -248,7 +253,15 @@ def push(args: Namespace) -> None:
             logger.info(f"Requirements build status: {status}")
             if status == "BUILDING":
                 sleep(5)  # Wait for 5 seconds before checking again
-        spinner.succeed("Requirements image build finished")  # type: ignore
+        if status == "FAILED":
+            spinner.fail(  # type: ignore
+                "Requirements image build failed."
+            ) # type: ignore
+            raise DatallogError(
+                requirements_build_status_json.get('message', 'Unknown error')
+            )
+        else:
+            spinner.succeed("Requirements image build finished")  # type: ignore
 
         if send_apps:
             spinner.start(text="Generating applications bundle")  # type: ignore

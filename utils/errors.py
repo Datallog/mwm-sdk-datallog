@@ -31,7 +31,7 @@ class LoginRequiredError(DatallogError):
         super().__init__(message)
         self.message = message
         
-class InvalidLoginToken(DatallogError):
+class InvalidLoginTokenError(DatallogError):
     """Custom exception for invalid login tokens."""
     def __init__(self, message: str):
         super().__init__(message)
