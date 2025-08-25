@@ -4,6 +4,8 @@ from errors import InvalidLoginTokenError
 from token_manager import encode_token, save_token
 import requests
 from variables import datallog_url
+from time import sleep
+from halo import Halo  # type: ignore
 
 logger = Logger(__name__)
 
@@ -30,13 +32,26 @@ def login(args: Namespace) -> None:
         "Authorization": authorization,
         "x-api-key": x_api_key,
     }
-
-    response = requests.post(
-        f"{datallog_url}/api/sdk/verify-token",
-        headers=headers,
-    )
-    if response.status_code != 200:
-        raise InvalidLoginTokenError(
-            f"Invalid token. Please check your token."
+    spinner = Halo(text="Verifying token", spinner="dots") # type: ignore
+    spinner.start()  # type: ignore
+    for _ in range(60):
+        response = requests.post(
+            f"{datallog_url}/api/sdk/verify-token",
+            headers=headers,
         )
-    save_token(encode_token(authorization, x_api_key))
+
+        if response.status_code == 200:
+            save_token(encode_token(authorization, x_api_key))
+            spinner.succeed("Token verified successfully")  # type: ignore
+            break
+        if (
+            response.status_code == 403
+            and response.json().get("message") == "Forbidden"
+        ):
+            sleep(1)
+        else:
+            spinner.fail("Token verification failed") # type: ignore
+            raise InvalidLoginTokenError(f"Invalid token. Please check your token.")
+    else:
+        spinner.fail("Token verification timed out") # type: ignore
+        raise InvalidLoginTokenError(f"Invalid token. Please check your token.")
