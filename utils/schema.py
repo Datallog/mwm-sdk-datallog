@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 
 class GetWorkItem(BaseModel):
     """
-    Represents a request sent by a worker process to the conteiner server
+    Represents a request sent by a worker process to the container server
     to ask for a new work item (a specific step to execute).
     """
 
@@ -20,12 +20,12 @@ class GetWorkItem(BaseModel):
 
 
 class Settings(BaseModel):
-   conteiner_engine: Literal["docker", "podman"] = "docker"
+   container_engine: Literal["docker", "podman"] = "docker"
 
 
 class GetExecutionProps(BaseModel):
     """
-    Represents a request sent by a worker process to the conteiner server,
+    Represents a request sent by a worker process to the container server,
     typically during initialization, to retrieve static properties
     associated with the overall application execution it will be part of.
     """
@@ -67,7 +67,7 @@ class ExecutionProps(BaseModel):
 class WorkItem(BaseModel):
     """
     Represents a single unit of work - a specific step execution task - sent
-    by the conteiner server to a worker process. It contains all the necessary
+    by the container server to a worker process. It contains all the necessary
     information for the worker to find and execute the correct step function.
     Can also be sent *by* the worker to the server to indicate the *next* step
     to be executed if the current step is not the final one.
@@ -99,7 +99,7 @@ class WorkItem(BaseModel):
 class WorkerPublishResult(BaseModel):
     """
     Represents the final result message sent by a worker process back to the
-    conteiner server after successfully completing a WorkItem.
+    container server after successfully completing a WorkItem.
 
     This message is sent *only* when the completed step is the *final step*
     in its specific execution path (i.e., no subsequent step is defined by
@@ -124,7 +124,7 @@ class WorkerPublishResult(BaseModel):
 
 class WorkerError(BaseModel):
     """
-    Represents a message sent by a worker process back to the conteiner server
+    Represents a message sent by a worker process back to the container server
     when an error occurs during the processing or execution of a WorkItem.
     """
 
@@ -142,7 +142,7 @@ class WorkerError(BaseModel):
 
 class NoMoreWorkItems(BaseModel):
     """
-    Represents a message sent by the conteiner server to a worker process
+    Represents a message sent by the container server to a worker process
     indicating that there are no more work items available for
     processing. This typically occurs when all tasks have been assigned
     and completed, signaling the worker to exit or wait for new tasks.
@@ -154,7 +154,7 @@ class NoMoreWorkItems(BaseModel):
 
 class WorkerMarkAsIdle(BaseModel):
     """
-    Represents a message sent by the conteiner server to a worker process
+    Represents a message sent by the container server to a worker process
     to mark it as idle. This is typically used to indicate that the worker
     is not currently processing any tasks and is available for new work.
     """

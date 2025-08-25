@@ -6,12 +6,12 @@ from tempfile import NamedTemporaryFile
 from time import sleep
 
 import requests
-from conteiner import (
+from container import (
     Dict,
-    conteiner_build,
-    conteiner_check_if_image_exists,
-    conteiner_generate_hash,
-    conteiner_install_packages,
+    container_build,
+    container_check_if_image_exists,
+    container_generate_hash,
+    container_install_packages,
 )
 from create_zip_with_metadata import create_zip_with_metadata
 from errors import DatallogError, LoginRequiredError, NetworkError, UnableToCreateDeployError
@@ -41,7 +41,7 @@ def push(args: Namespace) -> None:
 
         logger.info(f"cwd: {os.environ.get("DATALLOG_CURRENT_PATH", os.getcwd())}")
         logger.info("Deploy with the following parameters:")
-        spinner = Halo(text="Loading deploy", spinner="dots")
+        spinner = Halo(text="Loading deploy", spinner="dots") # type: ignore
         spinner.start()  # type: ignore
         deploy_path = get_deploy_base_dir()
         logger.info(f"Deployment Base Directory: {deploy_path}")
@@ -58,15 +58,15 @@ def push(args: Namespace) -> None:
 
         spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
-        conteiner_status = conteiner_check_if_image_exists(settings=settings, runtime_image=runtime)
-        if conteiner_status != "Yes":
-            if conteiner_status == "Outdated":
+        container_status = container_check_if_image_exists(settings=settings, runtime_image=runtime)
+        if container_status != "Yes":
+            if container_status == "Outdated":
                 spinner.fail("Docker image is outdated")  # type: ignore
             else:
                 spinner.fail("Docker image does not exist") # type: ignore
             spinner.start(text="Building Docker image")  # type: ignore
             logger.warning("Docker image does not exist. Building the image...")
-            conteiner_build(settings, runtime)
+            container_build(settings, runtime)
             spinner.succeed("Docker image built successfully")  # type: ignore
             logger.info("Docker image built successfully.")
         else:
@@ -78,7 +78,7 @@ def push(args: Namespace) -> None:
 
         spinner.start(text="Installing packages")  # type: ignore
 
-        conteiner_install_packages(
+        container_install_packages(
             settings=settings,
             requirements_file=deploy_path / "requirements.txt",
             runtime_image=runtime,
@@ -86,7 +86,7 @@ def push(args: Namespace) -> None:
         )
         spinner.succeed("Packages installed successfully")  # type: ignore
         spinner.start(text="Generating deploy hash")  # type: ignore
-        (requirement_hash, app_hash) = conteiner_generate_hash(
+        (requirement_hash, app_hash) = container_generate_hash(
             settings=settings,
             runtime_image=runtime,
             env_dir=env_path,

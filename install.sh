@@ -11,6 +11,7 @@ declare DATALLOG_INSTALL_PYENV=""
 declare DATALLOG_START_DOCKER_SERVICE=""
 declare DATALLOG_ENABLE_DOCKER_SERVICE=""
 declare DATALLOG_ADD_USER_TO_DOCKER_GROUP=""
+declare DATALLOG_USE_PODMAN=""
 declare DATALLOG_SUDO="sudo"
 declare DATALLOG_CAN_ROOT=""
 declare DATALLOG_REQUIRE_REBOOT=""
@@ -185,7 +186,8 @@ detect_os() {
                 DATALLOG_INSTALL_DEPS="dnf_install_deps"
             fi
             DATALLOG_INSTALL_PYENV="install_pyenv_linux"
-            
+            DATALLOG_USE_PODMAN="true"
+
             # fedora use podman instead of docker
         ;;
         arch|manjaro)
@@ -728,7 +730,12 @@ main() {
     GITHUB="https://github.com/"
     
     checkout "${GITHUB}Datallog/mwm-sdk-datallog.git" "${DATALLOG_ROOT}" "${DATALLOG_GIT_TAG:-master}"
-    
+
+    if [ -n "$DATALLOG_USE_PODMAN" ]; then
+        echo "Using Podman for container management."
+        echo '{"container_engine": "podman"}' > ${DATALLOG_ROOT}/settings.json
+    fi
+
     if grep -q 'export DATALLOG_ROOT' ~/.bashrc; then
         echo "DATALLOG_ROOT is already set in ~/.bashrc. Skipping."
     else

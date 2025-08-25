@@ -4,10 +4,10 @@ import os
 from get_deploy_base_dir import get_deploy_base_dir
 from get_deploy_env import Path, get_deploy_env
 from parser_deploy_ini import parse_deploy_ini
-from conteiner import (
-    conteiner_build,
-    conteiner_install_packages,
-    conteiner_check_if_image_exists,
+from container import (
+    container_build,
+    container_install_packages,
+    container_check_if_image_exists,
 )
 from errors import InvalidAppError
 from worker_server import WorkerServer
@@ -60,17 +60,17 @@ def run(args: Namespace) -> None:
         spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
 
         spinner.start(text="Checking Docker image")  # type: ignore
-        conteiner_status = conteiner_check_if_image_exists(settings, runtime)
+        container_status = container_check_if_image_exists(settings, runtime)
 
-        if conteiner_status != "Yes":
-            if conteiner_status == "Outdated":
+        if container_status != "Yes":
+            if container_status == "Outdated":
                 print("Docker image is outdated. Building the image...")
                 spinner.fail("Docker image is outdated")  # type: ignore
             else:
                 print("Docker image does not exist. Building the image...")
                 spinner.fail("Docker image does not exist")  # type: ignore
             spinner.start(text="Building Docker image")  # type: ignore
-            conteiner_build(settings, runtime)
+            container_build(settings, runtime)
             spinner.succeed("Docker image built successfully")  # type: ignore
         else:
             spinner.succeed("Runtime Docker image exists")  # type: ignore
@@ -78,7 +78,7 @@ def run(args: Namespace) -> None:
 
         spinner.start(text="Checking if packages are installed in Docker container")  # type: ignore
         env_path = get_deploy_env(deploy_path)
-        conteiner_install_packages(
+        container_install_packages(
             settings=settings,
             requirements_file=deploy_path / "requirements.txt",
             runtime_image=runtime,

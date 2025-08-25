@@ -47,7 +47,7 @@ class StreamTee(threading.Thread):
             self.capture_list.append(line)  # Capture the line
 
 
-def conteiner_exec(
+def container_exec(
     args: List[str], cwd: Optional[Path] = None, print_output: bool = False
 ) -> Tuple[subprocess.Popen[str], str, str]:
     try:
@@ -120,7 +120,7 @@ def conteiner_exec(
             ) from e
 
 
-def conteiner_run(
+def container_run(
     settings: Settings,
     runtime_image: str,
     command: str,
@@ -140,13 +140,13 @@ def conteiner_run(
     volumes_args_list = [item for sublist in volumes_args for item in sublist]
     
     permissions_args = ["--user", f"{os.getuid()}:{os.getgid()}"]
-    if settings.conteiner_engine == "podman":
+    if settings.container_engine == "podman":
         permissions_args = ["--userns=keep-id"]
     
     
     
-    conteiner_command = [
-        settings.conteiner_engine,
+    container_command = [
+        settings.container_engine,
         "run",
         *volumes_args_list,
         "--rm",
@@ -159,13 +159,13 @@ def conteiner_run(
         command,
         *args,
     ]
-    return conteiner_exec(conteiner_command, print_output=print_output)
+    return container_exec(container_command, print_output=print_output)
 
 
-def conteiner_build(settings: Settings, image_name: str) -> Tuple[subprocess.Popen[str], str, str]:
+def container_build(settings: Settings, image_name: str) -> Tuple[subprocess.Popen[str], str, str]:
     dockerfile = Path.cwd() / ".." / "runtimes" / image_name
     args = [
-        settings.conteiner_engine,
+        settings.container_engine,
         "buildx",
         "build",
         "--no-cache",
@@ -178,10 +178,10 @@ def conteiner_build(settings: Settings, image_name: str) -> Tuple[subprocess.Pop
         str(Path.cwd() / ".." / "runtimes"),
     ]
 
-    return conteiner_exec(args, cwd=Path.cwd() / ".." / "runtimes")
+    return container_exec(args, cwd=Path.cwd() / ".." / "runtimes")
 
 
-def conteiner_install_packages(
+def container_install_packages(
     settings: Settings,
     requirements_file: Path,
     env_dir: Path,
@@ -196,7 +196,7 @@ def conteiner_install_packages(
         runtime_image (str): image to use for the runtime.
     """
 
-    conteiner_run(
+    container_run(
         settings=settings,
         runtime_image=runtime_image,
         command="/install_packages.sh",
@@ -207,7 +207,7 @@ def conteiner_install_packages(
     )
 
 
-def conteiner_install_from_requirements(
+def container_install_from_requirements(
     settings: Settings,
     requirements_file: Path,
     env_dir: Path,
@@ -215,7 +215,7 @@ def conteiner_install_from_requirements(
     new_requirements: Path,
 ) -> Tuple[subprocess.Popen[str], str, str]:
 
-    return conteiner_run(
+    return container_run(
         settings=settings,
         runtime_image=runtime_image,
         command="/install_packages.sh",
@@ -228,7 +228,7 @@ def conteiner_install_from_requirements(
     )
 
 
-def conteiner_install_from_packages_list(
+def container_install_from_packages_list(
     settings: Settings,
     requirements_file: Path,
     env_dir: Path,
@@ -245,7 +245,7 @@ def conteiner_install_from_packages_list(
         packages (List[str]): List of packages to install.
     """
 
-    return conteiner_run(
+    return container_run(
         settings=settings,
         runtime_image=runtime_image,
         command="/install_packages.sh",
@@ -257,7 +257,7 @@ def conteiner_install_from_packages_list(
     )
 
 
-def conteiner_generate_hash(
+def container_generate_hash(
     settings: Settings, runtime_image: str, env_dir: Path, deploy_dir: Path
 ) -> Tuple[str, str]:
     """
@@ -270,7 +270,7 @@ def conteiner_generate_hash(
         Tuple[str, str]: A tuple containing the requirements hash and the application hash.
     """
 
-    (_, stdout, _) = conteiner_run(
+    (_, stdout, _) = container_run(
         settings=settings,
         runtime_image=runtime_image,
         volumes=[
@@ -308,7 +308,7 @@ def conteiner_generate_hash(
     return (requirements_hash, app_hash)
 
 
-def conteiner_check_if_image_exists(
+def container_check_if_image_exists(
     settings: Settings,
     runtime_image: str,
 ) -> Literal["No", "Yes", "Outdated"]:
@@ -322,15 +322,15 @@ def conteiner_check_if_image_exists(
         bool: True if the image exists, False otherwise.
     """
 
-    _, stdout, _ = conteiner_exec(
-        [settings.conteiner_engine, "images", "-q", "datallog-runtime-" + runtime_image]
+    _, stdout, _ = container_exec(
+        [settings.container_engine, "images", "-q", "datallog-runtime-" + runtime_image]
     )
     state = bool(stdout.strip())
     if not state:
         return "No"
-    _, stdout, _ = conteiner_exec(
+    _, stdout, _ = container_exec(
         [
-            settings.conteiner_engine,
+            settings.container_engine,
             "inspect",
             "-f",
             "{{ .Created }}",
@@ -380,7 +380,7 @@ def conteiner_check_if_image_exists(
     return "Yes"
 
 
-def conteiner_run_app(
+def container_run_app(
     settings: Settings,
     runtime_image: str,
     env_dir: Path,
@@ -409,7 +409,7 @@ def conteiner_run_app(
         
     args = ["-m", "datallog.utils.worker", str(worker_id)]
 
-    return conteiner_run(
+    return container_run(
         settings=settings,
         runtime_image=runtime_image,
         command="/env/bin/python",
@@ -420,14 +420,14 @@ def conteiner_run_app(
     )
 
 
-def conteiner_generete_build(
+def container_generete_build(
     settings: Settings,
     runtime_image: str, deploy_dir: Path, env_dir: Path
 ) -> Dict[str, Any]:
     try:
         with NamedTemporaryFile(mode="w", delete=True, suffix=".json") as temp_file:
             temp_file_path = Path(temp_file.name)
-            conteiner_run(
+            container_run(
                 settings=settings,
                 runtime_image=runtime_image,
                 command="/env/bin/python",

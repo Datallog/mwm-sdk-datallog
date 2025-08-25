@@ -10,10 +10,10 @@ from get_user_path import get_user_path
 from logger import Logger
 from get_deploy_env import get_deploy_env
 from validate_name import validate_name
-from conteiner import (
-    conteiner_check_if_image_exists,
-    conteiner_build,
-    conteiner_install_from_packages_list,
+from container import (
+    container_check_if_image_exists,
+    container_build,
+    container_install_from_packages_list,
 )
 from install_local_python import (
     get_python_executable,
@@ -125,17 +125,17 @@ def init(args: Namespace) -> None:
 
         spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
-        conteiner_status = conteiner_check_if_image_exists(settings, runtime)
+        container_status = container_check_if_image_exists(settings, runtime)
 
-        if conteiner_status != "Yes":
-            if conteiner_status == "Outdated":
+        if container_status != "Yes":
+            if container_status == "Outdated":
                 spinner.fail("Docker image is outdated")  # type: ignore
             else:
                 spinner.fail("Docker image does not exist")  # type: ignore
 
             spinner.start(text="Building Docker image")  # type: ignore
             logger.warning("Docker image does not exist. Building the image...")
-            conteiner_build(settings, runtime)
+            container_build(settings, runtime)
             spinner.succeed("Docker image built successfully")  # type: ignore
             logger.info("Docker image built successfully.")
         else:
@@ -148,7 +148,7 @@ def init(args: Namespace) -> None:
         spinner.start(text="Installing packages in Docker container")  # type: ignore
 
         logger.info("Checking if packages are installed in Docker container")
-        conteiner_install_from_packages_list(
+        container_install_from_packages_list(
             settings=settings,
             requirements_file=deploy_path / "requirements.txt",
             runtime_image=runtime,

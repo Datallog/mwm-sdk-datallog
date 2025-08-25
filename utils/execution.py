@@ -10,7 +10,7 @@ from schema import (
     WorkerError,
 )
 import os
-from conteiner import conteiner_run_app
+from container import container_run_app
 
 if TYPE_CHECKING:
     from worker_server import WorkerServer
@@ -114,7 +114,7 @@ class Execution:
     def _worker_process(self, worker_id: int) -> None:
         try:
             os.system(command='stty sane')
-            conteiner_run_app(
+            container_run_app(
                 settings=self.__settings,
                 runtime_image=self._runtime_image,
                 env_dir=self._env_dir,

@@ -8,7 +8,7 @@ import shutil
 
 from logger import Logger
 from execution import Optional
-from conteiner import Tuple
+from container import Tuple
 from errors import (
     UnableToCreateVirtualEnvError,
     UnableToFindPythonExecutableError,

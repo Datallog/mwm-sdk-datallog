@@ -11,11 +11,11 @@ from install_local_python import (
 )
 from get_deploy_base_dir import get_deploy_base_dir
 from parser_deploy_ini import parse_deploy_ini
-from conteiner import (
-    conteiner_check_if_image_exists,
-    conteiner_build,
-    conteiner_install_from_packages_list,
-    conteiner_install_from_requirements,
+from container import (
+    container_check_if_image_exists,
+    container_build,
+    container_install_from_packages_list,
+    container_install_from_requirements,
 )
 from get_deploy_env import get_deploy_env
 from errors import (
@@ -47,17 +47,17 @@ def install(args: Namespace) -> None:
 
         spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
-        conteiner_status = conteiner_check_if_image_exists(settings=settings, runtime_image=runtime)
+        container_status = container_check_if_image_exists(settings=settings, runtime_image=runtime)
 
-        if conteiner_status != "Yes":
-            if conteiner_status == "Outdated":
+        if container_status != "Yes":
+            if container_status == "Outdated":
                 spinner.fail("Docker image is outdated")  # type: ignore
             else:
                 spinner.fail("Docker image does not exist")  # type: ignore
 
             spinner.start(text="Building Docker image")  # type: ignore
             logger.warning("Docker image does not exist. Building the image...")
-            conteiner_build(settings, runtime)
+            container_build(settings, runtime)
             spinner.succeed("Docker image built successfully")  # type: ignore
             logger.info("Docker image built successfully.")
         else:
@@ -71,7 +71,7 @@ def install(args: Namespace) -> None:
 
         if args.packages:
             logger.info(f"Installing packages: {args.packages}")
-            conteiner_install_from_packages_list(
+            container_install_from_packages_list(
                 settings=settings,
                 requirements_file=deploy_path / "requirements.txt",
                 runtime_image=runtime,
@@ -81,7 +81,7 @@ def install(args: Namespace) -> None:
             spinner.succeed("Packages installed in Docker container successfully")  # type: ignore
         if args.requirements:
             logger.info(f"Installing packages from file: {args.file}")
-            conteiner_install_from_requirements(
+            container_install_from_requirements(
                 settings=settings,
                 requirements_file=deploy_path / "requirements.txt",
                 runtime_image=runtime,

@@ -4,11 +4,11 @@ import zipfile
 import json
 from pathlib import Path
 from errors import EmptyDeployDirError, UnableToBundleAppError
-from conteiner import (
-    conteiner_build,
-    conteiner_check_if_image_exists,
-    conteiner_generete_build,
-    conteiner_install_packages,
+from container import (
+    container_build,
+    container_check_if_image_exists,
+    container_generete_build,
+    container_install_packages,
 )
 from parser_deploy_ini import parse_deploy_ini
 from get_deploy_env import get_deploy_env
@@ -59,22 +59,22 @@ def create_zip_with_metadata(deploy_path: Path, output_zip_filename: Path) -> No
 
     deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
     runtime = deploy_ini.get("deploy", "runtime")
-    conteiner_status = conteiner_check_if_image_exists(settings, runtime) 
-    if  conteiner_status != "Yes":
-        logger.info(f"Docker image status {conteiner_status}. Building the image...")
-        conteiner_build(settings, runtime)
+    container_status = container_check_if_image_exists(settings, runtime) 
+    if  container_status != "Yes":
+        logger.info(f"Docker image status {container_status}. Building the image...")
+        container_build(settings, runtime)
     else:
         logger.info("Docker image exists.")
     env_path = get_deploy_env(deploy_path)
     logger.info(f"Environment Path: {env_path}")
-    conteiner_install_packages(
+    container_install_packages(
         settings=settings,
         requirements_file=deploy_path / "requirements.txt",
         runtime_image=runtime,
         env_dir=env_path,
     )
 
-    metadata_content = conteiner_generete_build(
+    metadata_content = container_generete_build(
         settings=settings,
         runtime_image=runtime, deploy_dir=deploy_path, env_dir=env_path
     )
