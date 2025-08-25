@@ -411,7 +411,7 @@ dnf_install_deps() {
     package_to_install=""
     
     for pkg in $package_list; do
-        if ! dnf list installed "$pkg" &>/dev/null; then
+        if ! dnf list --installed "$pkg" &>/dev/null; then
             package_to_install="$package_to_install $pkg"
         else
             echo "Package '$pkg' is already installed."
