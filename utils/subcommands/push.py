@@ -105,7 +105,7 @@ def push(args: Namespace) -> None:
         response_hash = requests.post(
             f"{datallog_url}/api/sdk/consult-hashes",
             json={
-                "project_name": name,
+                "deploy_name": name,
                 "applications_hash": app_hash,
                 "requirements_hash": requirement_hash,
             },
@@ -126,7 +126,7 @@ def push(args: Namespace) -> None:
             logger.info("Creating new project as it does not exist.")
             spinner.start(text="Creating new project")  # type: ignore
             response_create_app = requests.post(
-                f"{datallog_url}/api/sdk/create-project",
+                f"{datallog_url}/api/sdk/create-deploy",
                 json={
                     "docker_version": runtime,
                     "name": name,
@@ -229,7 +229,7 @@ def push(args: Namespace) -> None:
             response_notify_requirements_upload = requests.post(
                 f"{datallog_url}/api/sdk/confirm-requirements-upload",
                 json={
-                    "project_name": name,
+                    "deploy_name": name,
                     "url_s3": presigned_url,
                     "file_hash": requirement_hash,
                 },
@@ -320,7 +320,7 @@ def push(args: Namespace) -> None:
             logger.info(
                 json.dumps(
                     {
-                        "project_name": name,
+                        "deploy_name": name,
                         "url_s3": presigned_url,
                         "file_hash": app_hash,
                         "requirements_build_identifier": requirements_build_id,
@@ -332,7 +332,7 @@ def push(args: Namespace) -> None:
             response_notify_apps_upload = requests.post(
                 f"{datallog_url}/api/sdk/confirm-applications-upload",
                 json={
-                    "project_name": name,
+                    "deploy_name": name,
                     "url_s3": presigned_url,
                     "file_hash": app_hash,
                     "requirements_build_identifier": requirements_build_id,
