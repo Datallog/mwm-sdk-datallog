@@ -293,7 +293,7 @@ def push(args: Namespace) -> None:
 
                 temp_file.seek(0)
                 response_presinged_apps = requests.get(
-                    f"{datallog_url}/api/sdk/get-project-applications-presigned-url",
+                    f"{datallog_url}/api/sdk/get-deploy-applications-presigned-url",
                     params={
                         "deploy_name": name,
                     },

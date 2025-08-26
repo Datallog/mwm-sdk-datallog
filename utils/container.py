@@ -274,7 +274,7 @@ def container_generate_hash(
         settings=settings,
         runtime_image=runtime_image,
         volumes=[
-            (project_dir, Path("/project")),
+            (project_dir, Path("/deploy")),
             (env_dir, Path("/env")),
         ],
         command="/gen_hash.sh",
@@ -400,7 +400,7 @@ def container_run_app(
     """
     volumes = [
         (env_dir, Path("/env")),
-        (project_dir, Path("/project")),
+        (project_dir, Path("/deploy")),
         (Path(unix_socket_path), Path("/tmp/datallog_worker.sock")),
     ]
     
@@ -415,7 +415,7 @@ def container_run_app(
         command="/env/bin/python",
         volumes=volumes,
         args=args,
-        docker_args=["-w", "/project"],
+        docker_args=["-w", "/deploy"],
         print_output=True,
     )
 
@@ -432,11 +432,11 @@ def container_generete_build(
                 runtime_image=runtime_image,
                 command="/env/bin/python",
                 volumes=[
-                    (project_dir, Path("/project")),
+                    (project_dir, Path("/deploy")),
                     (env_dir, Path("/env")),
                     (temp_file_path, Path("/build.json")),
                 ],
-                docker_args=["-w", "/project"],
+                docker_args=["-w", "/deploy"],
                 args=["-m", "datallog.utils.generate_build_file"],
             )
             with open(temp_file_path, "r") as f:
