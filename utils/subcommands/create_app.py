@@ -2,7 +2,7 @@ from argparse import Namespace
 from pathlib import Path
 from halo import Halo  # type: ignore
 
-from get_project_base_dir import get_deploy_base_dir
+from get_project_base_dir import get_project_base_dir
 
 from logger import Logger
 from errors import DatallogError
@@ -31,8 +31,8 @@ def create_app(args: Namespace) -> None:
 - Can contain letters, digits (0-9), underscores (_), and hyphens (-)
 - Must be between 3 and 50 characters long."""
             )
-        deploy_path = get_deploy_base_dir()
-        app_path = deploy_path / "apps" / app_name
+        project_path = get_project_base_dir()
+        app_path = project_path / "apps" / app_name
         logger.info(f"Creating application at: {app_path}")
         if app_path.exists():
             raise DatallogError(
