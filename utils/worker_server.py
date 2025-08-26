@@ -16,7 +16,7 @@ class WorkerServer(ThreadingMixIn, UnixStreamServer):
         self,
         settings: 'Settings',
         runtime_image: str,
-        deploy_dir: Path,
+        project_dir: Path,
         env_dir: Path,
         app_name: str,
         seed: Optional[Any] = None,
@@ -27,7 +27,7 @@ class WorkerServer(ThreadingMixIn, UnixStreamServer):
         self._execution = Execution(
             settings=settings,
             runtime_image=runtime_image,
-            deploy_dir=deploy_dir,
+            project_dir=project_dir,
             env_dir=env_dir,
             app_name=app_name,
             seed=seed,

@@ -258,13 +258,13 @@ def container_install_from_packages_list(
 
 
 def container_generate_hash(
-    settings: Settings, runtime_image: str, env_dir: Path, deploy_dir: Path
+    settings: Settings, runtime_image: str, env_dir: Path, project_dir: Path
 ) -> Tuple[str, str]:
     """
     Generate a hash of the environment directory.
 
     Args:
-        deploy_dir (Path): Directory of the virtual environment.
+        project_dir (Path): Directory of the virtual environment.
 
     Returns:
         Tuple[str, str]: A tuple containing the requirements hash and the application hash.
@@ -274,7 +274,7 @@ def container_generate_hash(
         settings=settings,
         runtime_image=runtime_image,
         volumes=[
-            (deploy_dir, Path("/deploy")),
+            (project_dir, Path("/project")),
             (env_dir, Path("/env")),
         ],
         command="/gen_hash.sh",
@@ -384,7 +384,7 @@ def container_run_app(
     settings: Settings,
     runtime_image: str,
     env_dir: Path,
-    deploy_dir: Path,
+    project_dir: Path,
     unix_socket_path: str,
     worker_id: int,
     log_to_dir: Optional[Path],
@@ -395,12 +395,12 @@ def container_run_app(
     Args:
         runtime_image (str): Image to use for the runtime.
         env_dir (Path): Directory of the virtual environment.
-        deploy_dir (Path): Directory of the deployment.
+        project_dir (Path): Directory of the project.
         unix_socket_path (str): Path to the Unix socket for communication.
     """
     volumes = [
         (env_dir, Path("/env")),
-        (deploy_dir, Path("/deploy")),
+        (project_dir, Path("/project")),
         (Path(unix_socket_path), Path("/tmp/datallog_worker.sock")),
     ]
     
@@ -415,14 +415,14 @@ def container_run_app(
         command="/env/bin/python",
         volumes=volumes,
         args=args,
-        docker_args=["-w", "/deploy"],
+        docker_args=["-w", "/project"],
         print_output=True,
     )
 
 
 def container_generete_build(
     settings: Settings,
-    runtime_image: str, deploy_dir: Path, env_dir: Path
+    runtime_image: str, project_dir: Path, env_dir: Path
 ) -> Dict[str, Any]:
     try:
         with NamedTemporaryFile(mode="w", delete=True, suffix=".json") as temp_file:
@@ -432,11 +432,11 @@ def container_generete_build(
                 runtime_image=runtime_image,
                 command="/env/bin/python",
                 volumes=[
-                    (deploy_dir, Path("/deploy")),
+                    (project_dir, Path("/project")),
                     (env_dir, Path("/env")),
                     (temp_file_path, Path("/build.json")),
                 ],
-                docker_args=["-w", "/deploy"],
+                docker_args=["-w", "/project"],
                 args=["-m", "datallog.utils.generate_build_file"],
             )
             with open(temp_file_path, "r") as f:

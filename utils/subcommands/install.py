@@ -9,15 +9,15 @@ from install_local_python import (
     install_local_packages_from_requirements,
     install_local_python_packages,
 )
-from get_deploy_base_dir import get_deploy_base_dir
-from parser_deploy_ini import parse_deploy_ini
+from get_project_base_dir import get_project_base_dir
+from parser_project_ini import parse_project_ini
 from container import (
     container_check_if_image_exists,
     container_build,
     container_install_from_packages_list,
     container_install_from_requirements,
 )
-from get_deploy_env import get_deploy_env
+from get_project_env import get_project_env
 from errors import (
     DatallogError,
 )
@@ -31,21 +31,21 @@ def install(args: Namespace) -> None:
     spinner = None
     try:
         settings = load_settings()
-        spinner = Halo(text="Loading deploy", spinner="dots")
+        spinner = Halo(text="Loading project", spinner="dots") # type: ignore
         spinner.start()  # type: ignore
-        deploy_path = get_deploy_base_dir()
-        logger.info(f"Deployment Base Directory: {deploy_path}")
+        project_path = get_project_base_dir()
+        logger.info(f"Project Base Directory: {project_path}")
         logger.info("Parsing application name...")
 
-        deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
+        project_ini = parse_project_ini(project_path / "project.ini")
 
-        logger.info("Parsed deploy.ini successfully.")
+        logger.info("Parsed project.ini successfully.")
         logger.info("Checking if Docker image exists...")
 
-        runtime = deploy_ini.get("deploy", "runtime")
+        runtime = project_ini.get("project", "runtime")
         python_version = runtime[(len("python-")) :].strip()
 
-        spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
+        spinner.succeed("Project parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
         container_status = container_check_if_image_exists(settings=settings, runtime_image=runtime)
 
@@ -64,7 +64,7 @@ def install(args: Namespace) -> None:
             spinner.succeed("Runtime Docker image exists")  # type: ignore
             logger.info("Docker image exists.")
 
-        env_path = get_deploy_env(deploy_path)
+        env_path = get_project_env(project_path)
         logger.info(f"Environment Path: {env_path}")
 
         spinner.start(text="Installing packages in Docker container")  # type: ignore
@@ -73,7 +73,7 @@ def install(args: Namespace) -> None:
             logger.info(f"Installing packages: {args.packages}")
             container_install_from_packages_list(
                 settings=settings,
-                requirements_file=deploy_path / "requirements.txt",
+                requirements_file=project_path / "requirements.txt",
                 runtime_image=runtime,
                 env_dir=env_path,
                 packages=args.packages,
@@ -83,7 +83,7 @@ def install(args: Namespace) -> None:
             logger.info(f"Installing packages from file: {args.file}")
             container_install_from_requirements(
                 settings=settings,
-                requirements_file=deploy_path / "requirements.txt",
+                requirements_file=project_path / "requirements.txt",
                 runtime_image=runtime,
                 env_dir=env_path,
                 new_requirements=Path(args.requirements).absolute(),
@@ -99,19 +99,19 @@ def install(args: Namespace) -> None:
         spinner.succeed("Python executable found")  # type: ignore
 
         spinner.start(text="Creating local Python environment")  # type: ignore
-        venv_path = create_local_env(deploy_path, python_executable)
+        venv_path = create_local_env(project_path, python_executable)
 
         spinner.succeed(text="Local Python environment created successfully")  # type: ignore
 
         if args.packages:
             install_local_python_packages(
-                deploy_dir=deploy_path,
+                project_dir=project_path,
                 python_executable=venv_path / "bin" / "python",
                 packages=args.packages,
             )
         if args.requirements:
             install_local_packages_from_requirements(
-                deploy_dir=deploy_path,
+                project_dir=project_path,
                 python_executable=venv_path / "bin" / "python",
                 requirements_file=Path(args.requirements).absolute(),
             )

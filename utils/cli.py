@@ -28,14 +28,15 @@ subparsers = parser.add_subparsers(
 subparsers.required = True  # Make selecting a command mandatory
 
 
-# --- 'init' command ---
-parser_init = subparsers.add_parser(
-    "init",
+# --- 'create-project' command ---
+parser_project = subparsers.add_parser(
+    "create-project",
     help="Create a new deployment",
-    usage="""datallog init [options]""",
+    usage="""datallog create-project [options]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
-parser_init.add_argument(
+
+parser_project.add_argument(
     "name",
     metavar="<name>",
     type=str,
@@ -181,10 +182,10 @@ if __name__ == "__main__":
             from subcommands.logout import logout
 
             logout(args)
-        elif args.command == "init":
-            from subcommands.init import init
+        elif args.command == "create-project":
+            from subcommands.create_project import create_project
 
-            init(args)
+            create_project(args)
         elif args.command == "install":
             from subcommands.install import install
 

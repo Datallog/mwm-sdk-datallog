@@ -1,9 +1,9 @@
 from argparse import Namespace
 import json
 import os
-from get_deploy_base_dir import get_deploy_base_dir
-from get_deploy_env import Path, get_deploy_env
-from parser_deploy_ini import parse_deploy_ini
+from get_project_base_dir import get_project_base_dir
+from get_project_env import Path, get_project_env
+from parser_project_ini import parse_project_ini
 from container import (
     container_build,
     container_install_packages,
@@ -39,25 +39,25 @@ def run(args: Namespace) -> None:
     spinner = None
     try:
         settings = load_settings()
-        deploy_path = get_deploy_base_dir()
+        project_path = get_project_base_dir()
 
         processed_app_name = parse_app(args.app_name)
 
         app_path = (
-            deploy_path / "apps" / processed_app_name / f"{processed_app_name}.py"
+            project_path / "apps" / processed_app_name / f"{processed_app_name}.py"
         )
         if not app_path.exists():
             raise InvalidAppError(
                 f"Application file '{app_path}' does not exist. Please check the app name."
             )
 
-        spinner = Halo(text="Loading deploy", spinner="dots")  # type: ignore
+        spinner = Halo(text="Loading project", spinner="dots")  # type: ignore
 
-        deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
+        project_ini = parse_project_ini(project_path / "project.ini")
 
-        runtime: str = deploy_ini.get("deploy", "runtime")
+        runtime: str = project_ini.get("project", "runtime")
 
-        spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
+        spinner.succeed("Project parameters loaded successfully")  # type: ignore
 
         spinner.start(text="Checking Docker image")  # type: ignore
         container_status = container_check_if_image_exists(settings, runtime)
@@ -77,10 +77,10 @@ def run(args: Namespace) -> None:
             pass
 
         spinner.start(text="Checking if packages are installed in Docker container")  # type: ignore
-        env_path = get_deploy_env(deploy_path)
+        env_path = get_project_env(project_path)
         container_install_packages(
             settings=settings,
-            requirements_file=deploy_path / "requirements.txt",
+            requirements_file=project_path / "requirements.txt",
             runtime_image=runtime,
             env_dir=env_path,
         )
@@ -94,7 +94,7 @@ def run(args: Namespace) -> None:
             else:
                 seed_file = args.seed_file.strip() if args.seed_file else ""
                 if not seed_file:
-                    seed_file = deploy_path / "apps" / processed_app_name / "seed.json"
+                    seed_file = project_path / "apps" / processed_app_name / "seed.json"
                 if not os.path.exists(seed_file):
                     raise InvalidAppError(
                         f"Seed file '{seed_file}' does not exist. Please provide a valid seed file."
@@ -120,7 +120,7 @@ def run(args: Namespace) -> None:
         server = WorkerServer(
             settings=settings,
             runtime_image=runtime,
-            deploy_dir=deploy_path,
+            project_dir=project_path,
             env_dir=env_path,
             app_name=processed_app_name,
             parallelism=args.parallelism,

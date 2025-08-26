@@ -10,8 +10,8 @@ class InvalidAppError(DatallogError):
         super().__init__(message)
         self.message = message
         
-class EmptyDeployDirError(DatallogError):
-    """Custom exception for empty deploy directory."""
+class EmptyProjectDirError(DatallogError):
+    """Custom exception for empty project directory."""
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
@@ -94,8 +94,8 @@ class UnableToSaveConfigError(DatallogError):
         super().__init__(message)
         self.message = message
         
-class UnableToCreateDeployError(DatallogError):
-    """Custom exception for errors when creating a deployment."""
+class UnableToCreateProjectError(DatallogError):
+    """Custom exception for errors when creating a project."""
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message

@@ -22,7 +22,7 @@ class Execution:
         *,
         settings: 'Settings',
         runtime_image: str,
-        deploy_dir: Path,
+        project_dir: Path,
         env_dir: Path,
         app_name: str,
         seed: Optional[Any] = None,
@@ -31,7 +31,7 @@ class Execution:
         socket_path: str,
     ):
         self._runtime_image = runtime_image
-        self._deploy_dir = deploy_dir
+        self._project_dir = project_dir
         self._env_dir = env_dir
 
         self._parallelism = parallelism
@@ -39,7 +39,7 @@ class Execution:
         self._threads: List[Thread] = []
         self._work_item_queue: LifoQueue[WorkItem] = LifoQueue()
         self._execution_props = ExecutionProps(
-            file_path=str(Path("/deploy") / "apps" / app_name / f"{app_name}.py"),
+            file_path=str(Path("/project") / "apps" / app_name / f"{app_name}.py"),
             log_to_dir='/logs' if log_to_dir else None,
         )
 
@@ -118,7 +118,7 @@ class Execution:
                 settings=self.__settings,
                 runtime_image=self._runtime_image,
                 env_dir=self._env_dir,
-                deploy_dir=self._deploy_dir,
+                project_dir=self._project_dir,
                 unix_socket_path=self._socket_path,
                 worker_id=worker_id,
                 log_to_dir=self._log_to_dir,

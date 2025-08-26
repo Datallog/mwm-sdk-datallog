@@ -14,12 +14,17 @@ from container import (
     container_install_packages,
 )
 from create_zip_with_metadata import create_zip_with_metadata
-from errors import DatallogError, LoginRequiredError, NetworkError, UnableToCreateDeployError
-from get_deploy_base_dir import get_deploy_base_dir
-from get_deploy_env import get_deploy_env
+from errors import (
+    DatallogError,
+    LoginRequiredError,
+    NetworkError,
+    UnableToCreateProjectError,
+)
+from get_project_base_dir import get_project_base_dir
+from get_project_env import get_project_env
 from halo import Halo  # type: ignore
 from logger import Logger
-from parser_deploy_ini import parse_deploy_ini
+from parser_project_ini import parse_project_ini
 from token_manager import retrieve_token
 from variables import datallog_url
 from settings import load_settings
@@ -34,36 +39,39 @@ def push(args: Namespace) -> None:
         settings = load_settings()
         token = retrieve_token()
         if not token:
-            logger.error("You are not logged in. Please log in first with `datallog login`.")
+            logger.error(
+                "You are not logged in. Please log in first with `datallog login`."
+            )
             raise LoginRequiredError(
                 "You are not logged in. Please log in first with `datallog login`."
             )
 
         logger.info(f"cwd: {os.environ.get("DATALLOG_CURRENT_PATH", os.getcwd())}")
-        logger.info("Deploy with the following parameters:")
-        spinner = Halo(text="Loading deploy", spinner="dots") # type: ignore
+        spinner = Halo(text="Loading project", spinner="dots")  # type: ignore
         spinner.start()  # type: ignore
-        deploy_path = get_deploy_base_dir()
-        logger.info(f"Deployment Base Directory: {deploy_path}")
+        project_path = get_project_base_dir()
+        logger.info(f"Project Base Directory: {project_path}")
         logger.info("Parsing application name...")
 
-        deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
+        project_ini = parse_project_ini(project_path / "project.ini")
 
-        logger.info("Parsed deploy.ini successfully.")
+        logger.info("Parsed project.ini successfully.")
         logger.info("Checking if Docker image exists...")
 
-        runtime = deploy_ini.get("deploy", "runtime")
-        name = deploy_ini.get("deploy", "name")
-        region = deploy_ini.get("deploy", "region")
+        runtime = project_ini.get("project", "runtime")
+        name = project_ini.get("project", "name")
+        region = project_ini.get("project", "region")
 
-        spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
+        spinner.succeed("Project parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
-        container_status = container_check_if_image_exists(settings=settings, runtime_image=runtime)
+        container_status = container_check_if_image_exists(
+            settings=settings, runtime_image=runtime
+        )
         if container_status != "Yes":
             if container_status == "Outdated":
                 spinner.fail("Docker image is outdated")  # type: ignore
             else:
-                spinner.fail("Docker image does not exist") # type: ignore
+                spinner.fail("Docker image does not exist")  # type: ignore
             spinner.start(text="Building Docker image")  # type: ignore
             logger.warning("Docker image does not exist. Building the image...")
             container_build(settings, runtime)
@@ -73,37 +81,37 @@ def push(args: Namespace) -> None:
             spinner.succeed("Runtime Docker image exists")  # type: ignore
             logger.info("Docker image exists.")
 
-        env_path = get_deploy_env(deploy_path)
+        env_path = get_project_env(project_path)
         logger.info(f"Environment Path: {env_path}")
 
         spinner.start(text="Installing packages")  # type: ignore
 
         container_install_packages(
             settings=settings,
-            requirements_file=deploy_path / "requirements.txt",
+            requirements_file=project_path / "requirements.txt",
             runtime_image=runtime,
             env_dir=env_path,
         )
         spinner.succeed("Packages installed successfully")  # type: ignore
-        spinner.start(text="Generating deploy hash")  # type: ignore
+        spinner.start(text="Generating project hash")  # type: ignore
         (requirement_hash, app_hash) = container_generate_hash(
             settings=settings,
             runtime_image=runtime,
             env_dir=env_path,
-            deploy_dir=deploy_path,
+            project_dir=project_path,
         )
-        spinner.succeed("Deploy hash generated successfully")  # type: ignore
-        spinner.start(text="Checking current deploy hashes")  # type: ignore
+        spinner.succeed("Project hash generated successfully")  # type: ignore
+        spinner.start(text="Checking current project hashes")  # type: ignore
         response_hash = requests.post(
             f"{datallog_url}/api/sdk/consult-hashes",
             json={
-                "deploy_name": name,
+                "project_name": name,
                 "applications_hash": app_hash,
                 "requirements_hash": requirement_hash,
             },
             headers=token,
         )
-        spinner.succeed("Deploy hashes checked successfully")  # type: ignore
+        spinner.succeed("Project hashes checked successfully")  # type: ignore
 
         if response_hash.status_code == 404:
             logger.info(
@@ -115,10 +123,10 @@ def push(args: Namespace) -> None:
                     }
                 )
             )
-            logger.info("Creating new deploy as it does not exist.")
-            spinner.start(text="Creating new deploy")  # type: ignore
+            logger.info("Creating new project as it does not exist.")
+            spinner.start(text="Creating new project")  # type: ignore
             response_create_app = requests.post(
-                f"{datallog_url}/api/sdk/create-deploy",
+                f"{datallog_url}/api/sdk/create-project",
                 json={
                     "docker_version": runtime,
                     "name": name,
@@ -127,13 +135,15 @@ def push(args: Namespace) -> None:
                 headers=token,
             )
             if response_create_app.status_code != 200:
-                create_error_message = response_create_app.json().get("message", "Unable to create a new deploy")
-                raise UnableToCreateDeployError(
-                    create_error_message
+                create_error_message = response_create_app.json().get(
+                    "message", "Unable to create a new project"
                 )
-            logger.info(f"Response from create deploy: {response_create_app.status_code}")
-            logger.info(f"Created deploy: {response_create_app.json()}")
-            spinner.succeed("New deploy created successfully")  # type: ignore
+                raise UnableToCreateProjectError(create_error_message)
+            logger.info(
+                f"Response from create project: {response_create_app.status_code}"
+            )
+            logger.info(f"Created project: {response_create_app.json()}")
+            spinner.succeed("New project created successfully")  # type: ignore
 
         elif not response_hash.ok:
             if (
@@ -146,7 +156,7 @@ def push(args: Namespace) -> None:
                     raise LoginRequiredError(
                         "Your token is invalid. Please log in first with `datallog login`."
                     )
-            raise NetworkError("Failed to check deploy hashes")
+            raise NetworkError("Failed to check project hashes")
 
         response_hash_json = response_hash.json()
         logger.info(response_hash_json)
@@ -159,11 +169,17 @@ def push(args: Namespace) -> None:
         app_hash_json = response_hash_json.get("app_build", {})
         requirement_hash_json = response_hash_json.get("req_build", {})
 
-        if requirement_hash_json.get("exists", False) and requirement_hash_json.get("status", "NOT_FOUND") == "FAILED":
+        if (
+            requirement_hash_json.get("exists", False)
+            and not requirement_hash_json.get("status", "NOT_FOUND") == "FAILED"
+        ):
             send_requirements = False
             requirements_build_id = response_hash_json["req_build"]["id"]
 
-        if app_hash_json.get("exists", False) and app_hash_json.get("status", "NOT_FOUND") == "FAILED":
+        if (
+            app_hash_json.get("exists", False)
+            and not app_hash_json.get("status", "NOT_FOUND") == "FAILED"
+        ):
             send_apps = False
             applications_build_id = response_hash_json["app_build"]["id"]
 
@@ -177,7 +193,7 @@ def push(args: Namespace) -> None:
                 },
                 headers=token,
             )
-            requirement_file = deploy_path / "requirements.txt"
+            requirement_file = project_path / "requirements.txt"
 
             if not response_presinged_requirements.ok:
                 raise Exception(
@@ -213,7 +229,7 @@ def push(args: Namespace) -> None:
             response_notify_requirements_upload = requests.post(
                 f"{datallog_url}/api/sdk/confirm-requirements-upload",
                 json={
-                    "deploy_name": name,
+                    "project_name": name,
                     "url_s3": presigned_url,
                     "file_hash": requirement_hash,
                 },
@@ -245,7 +261,9 @@ def push(args: Namespace) -> None:
                 f"{datallog_url}/api/sdk/requirements-build-status/{requirements_build_id}",
                 headers=token,
             )
-            requirements_build_status_json: Dict[str, str] = response_requirements_build_status.json()
+            requirements_build_status_json: Dict[str, str] = (
+                response_requirements_build_status.json()
+            )
             logger.info(
                 f"Requirements build status response: {requirements_build_status_json}"
             )
@@ -256,9 +274,9 @@ def push(args: Namespace) -> None:
         if status == "FAILED":
             spinner.fail(  # type: ignore
                 "Requirements image build failed."
-            ) # type: ignore
+            )  # type: ignore
             raise DatallogError(
-                requirements_build_status_json.get('message', 'Unknown error')
+                requirements_build_status_json.get("message", "Unknown error")
             )
         else:
             spinner.succeed("Requirements image build finished")  # type: ignore
@@ -268,14 +286,14 @@ def push(args: Namespace) -> None:
 
             with NamedTemporaryFile() as temp_file:
                 create_zip_with_metadata(
-                    deploy_path,
+                    project_path,
                     output_zip_filename=Path(temp_file.name),
                 )
                 spinner.succeed("Applications bundle created successfully")  # type: ignore
 
                 temp_file.seek(0)
                 response_presinged_apps = requests.get(
-                    f"{datallog_url}/api/sdk/get-deploy-applications-presigned-url",
+                    f"{datallog_url}/api/sdk/get-project-applications-presigned-url",
                     params={
                         "deploy_name": name,
                     },
@@ -302,7 +320,7 @@ def push(args: Namespace) -> None:
             logger.info(
                 json.dumps(
                     {
-                        "deploy_name": name,
+                        "project_name": name,
                         "url_s3": presigned_url,
                         "file_hash": app_hash,
                         "requirements_build_identifier": requirements_build_id,
@@ -314,7 +332,7 @@ def push(args: Namespace) -> None:
             response_notify_apps_upload = requests.post(
                 f"{datallog_url}/api/sdk/confirm-applications-upload",
                 json={
-                    "deploy_name": name,
+                    "project_name": name,
                     "url_s3": presigned_url,
                     "file_hash": app_hash,
                     "requirements_build_identifier": requirements_build_id,
@@ -344,15 +362,13 @@ def push(args: Namespace) -> None:
                 headers=token,
             )
             apps_build_status_json = response_apps_build_status.json()
-            logger.info(
-                f"Applications build status response: {apps_build_status_json}"
-            )
+            logger.info(f"Applications build status response: {apps_build_status_json}")
             status = apps_build_status_json.get("status", "BUILDING")
             logger.info(f"Applications build status: {status}")
             if status == "BUILDING":
                 sleep(5)
         spinner.succeed("Applications image build finished")  # type: ignore
-    
+
     except DatallogError as e:
         if spinner:
             spinner.fail(f"Error: {e}")  # type: ignore

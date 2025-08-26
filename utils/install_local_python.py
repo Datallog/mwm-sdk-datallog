@@ -137,13 +137,13 @@ def get_python_executable(python_version: str) -> Path:
     return Path(found_python_path)
 
 
-def create_local_env(deploy_dir: Path, python_executable: Path) -> Path:
+def create_local_env(project_dir: Path, python_executable: Path) -> Path:
     """
-    Creates a local Python environment in the specified deployment directory.
+    Creates a local Python environment in the specified project directory.
     """
 
     # Create a virtual environment
-    venv_path = deploy_dir / "env"
+    venv_path = project_dir / "env"
     python_bin = venv_path / "bin" / "python"
 
     if not python_bin.exists() and venv_path.exists():
@@ -171,7 +171,7 @@ def create_local_env(deploy_dir: Path, python_executable: Path) -> Path:
 
 
 def install_local_packages_from_requirements(
-    deploy_dir: Path, python_executable: Path, requirements_file: Path
+    project_dir: Path, python_executable: Path, requirements_file: Path
 ) -> None:
     """
     Installs packages from a requirements file in the local Python environment.
@@ -191,7 +191,7 @@ def install_local_packages_from_requirements(
         installed_requiments_process = subprocess.run(
             [python_executable, "-m", "pip", "freeze", "--local"],
             check=True,
-            cwd=deploy_dir,
+            cwd=project_dir,
             capture_output=True,
             text=True,
         )
@@ -202,15 +202,15 @@ def install_local_packages_from_requirements(
 
     except subprocess.CalledProcessError as e:
         logger.error(
-            f"Failed to check installed packages in {deploy_dir}. Error: {e.stderr}"
+            f"Failed to check installed packages in {project_dir}. Error: {e.stderr}"
         )
         raise UnableToInstallPackagesError(
-            f"Failed to check installed packages in {deploy_dir}. Error: {e.stderr}"
+            f"Failed to check installed packages in {project_dir}. Error: {e.stderr}"
         )
 
     if requirements.issubset(installed_requiments_set):
         logger.info(
-            f"All required packages from {requirements_file} are already installed in {deploy_dir}."
+            f"All required packages from {requirements_file} are already installed in {project_dir}."
         )
         return
 
@@ -219,7 +219,7 @@ def install_local_packages_from_requirements(
         subprocess.run(
             [python_executable, "-m", "pip", "install", "-r", str(requirements_file)],
             check=True,
-            cwd=deploy_dir,
+            cwd=project_dir,
         )
         logger.info("Packages installed successfully.")
 
@@ -233,7 +233,7 @@ def install_local_packages_from_requirements(
 
 
 def install_local_python_packages(
-    deploy_dir: Path, python_executable: Path, packages: List[str]
+    project_dir: Path, python_executable: Path, packages: List[str]
 ) -> None:
     """
     Installs specified packages in the local Python environment.
@@ -248,7 +248,7 @@ def install_local_python_packages(
         subprocess.run(
             [str(python_executable), "-m", "pip", "install"] + packages,
             check=True,
-            cwd=deploy_dir,
+            cwd=project_dir,
         )
         logger.info("Packages installed successfully.")
 

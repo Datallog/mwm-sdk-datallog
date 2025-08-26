@@ -2,12 +2,12 @@ import configparser
 from pathlib import Path
 
 
-def parse_deploy_ini(file_path: Path) -> configparser.ConfigParser:
+def parse_project_ini(file_path: Path) -> configparser.ConfigParser:
     """
-    Parse the deploy.ini file and return a ConfigParser object.
+    Parse the project.ini file and return a ConfigParser object.
 
     Args:
-        file_path (Path): Path to the deploy.ini file.
+        file_path (Path): Path to the project.ini file.
 
     Returns:
         configparser.ConfigParser: Parsed configuration.

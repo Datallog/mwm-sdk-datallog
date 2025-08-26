@@ -8,7 +8,7 @@ from halo import Halo  # type: ignore
 from errors import DatallogError, UnableToSaveConfigError
 from get_user_path import get_user_path
 from logger import Logger
-from get_deploy_env import get_deploy_env
+from get_project_env import get_project_env
 from validate_name import validate_name
 from container import (
     container_check_if_image_exists,
@@ -21,26 +21,26 @@ from install_local_python import (
     install_local_python_packages,
 )
 from settings import load_settings
-from parser_deploy_ini import parse_deploy_ini
+from parser_project_ini import parse_project_ini
 
 
 logger = Logger(__name__)
 
 
-def create_deploy_config(
+def create_project_config(
     name: str, runtime: str, region: str, output_path: Path
 ) -> None:
     """
-    Generates a deployment configuration file.
+    Generates a project configuration file.
 
     This function uses the configparser library to create a .ini-style
-    configuration file with a [deploy] section containing the provided
+    configuration file with a [project] section containing the provided
     details.
 
     Args:
-        name (str): The name for the deployment (e.g., 'deploy-1').
+        name (str): The name for the project (e.g., 'project-1').
         runtime (str): The runtime environment (e.g., 'python-3.10').
-        region (str): The deployment region (e.g., 'us-east-1').
+        region (str): The project region (e.g., 'us-east-1').
         output_path (str): The full path, including filename, where the
                            configuration file will be saved.
     """
@@ -48,12 +48,12 @@ def create_deploy_config(
     config = configparser.ConfigParser()
 
     # Define the section name
-    section_name = "deploy"
+    section_name = "project"
 
-    # Add the 'deploy' section to the configuration
+    # Add the 'project' section to the configuration
     config[section_name] = {}
 
-    # Set the key-value pairs within the 'deploy' section
+    # Set the key-value pairs within the 'project' section
     config[section_name]["name"] = name
     config[section_name]["runtime"] = runtime
     config[section_name]["region"] = region
@@ -68,20 +68,37 @@ def create_deploy_config(
         ) from e
 
 
-def init(args: Namespace) -> None:
+def create_project(args: Namespace) -> None:
     """
-    Create a new project (deploy) with the necessary files and directories.
+    Create a new project with the necessary files and directories.
     """
     spinner = None
     try:
         settings   = load_settings()
-        project_name = args.name.strip() if args.name else ""
-        deploy_path = get_user_path()
-        dirname = args.name.strip() if args.name.strip() else deploy_path.name
-        deploy_ini_path = deploy_path / "deploy.ini"
-        spinner = Halo(text="Creating deploy", spinner="dots")
+        current_path: Path = get_user_path()
+        project_name = args.name.strip() if args.name.strip() else ''
+        
+        spinner = Halo(text="Creating project", spinner="dots") # type: ignore
+        project_path = current_path
+        project_ini_path = project_path / "project.ini"
+        
+        dirname = current_path.name
+        if not project_ini_path.exists() and project_name:
+            project_path = current_path / project_name
+            project_ini_path = project_path / "project.ini"
+        
+        if project_ini_path.exists():
+            project_ini = parse_project_ini(project_ini_path)
 
-        if not deploy_ini_path.exists():
+            logger.info("Parsed project.ini successfully.")
+
+            runtime = project_ini.get("project", "runtime")
+            region = project_ini.get("project", "region")
+            logger.warning(
+            f"Project '{project_name}' already exists. Skipping project.ini creation."
+            )
+            spinner.succeed("project configuration already exists, using existing config")  # type: ignore
+        else:        
             if len(project_name) == 0:
                 project_name = input(f"Enter the name of the new project or press enter to use ({dirname}): ").strip()
                 if len(project_name) == 0:
@@ -96,34 +113,32 @@ def init(args: Namespace) -> None:
                 )
             runtime = "python-3.10"
             region = "us-east-1"
-            create_deploy_config(
+            
+            
+            if project_name == dirname:
+                project_path = current_path
+            else:
+                project_path = current_path / project_name
+            project_path.mkdir(parents=True, exist_ok=True)
+            project_ini_path = project_path / "project.ini"
+            create_project_config(
                 name=project_name,
                 runtime=runtime,
                 region=region,
-                output_path=deploy_path / "deploy.ini",
+                output_path=project_ini_path,
             )
-            base_project_files = Path(__file__).parent.parent.parent / "deploy-base"
+            base_project_files = Path(__file__).parent.parent.parent / "project-base"
             spinner.text = "Copying base project files"  # type: ignore
 
-            shutil.copytree(base_project_files, deploy_path, dirs_exist_ok=True)
-        else:
-            deploy_ini = parse_deploy_ini(deploy_path / "deploy.ini")
-
-            logger.info("Parsed deploy.ini successfully.")
-            
-            runtime = deploy_ini.get("deploy", "runtime")
-            region = deploy_ini.get("deploy", "region")
-            logger.warning(
-                f"Project '{project_name}' already exists. Skipping deploy.ini creation."
-            )
-            spinner.succeed("Deploy configuration already exists, using existing config")  # type: ignore
+            shutil.copytree(base_project_files, project_path, dirs_exist_ok=True)
+    
 
         spinner.start()  # type: ignore
 
 
         python_version = runtime[(len("python-")) :].strip()
 
-        spinner.succeed("Deploy parameters loaded successfully")  # type: ignore
+        spinner.succeed("project parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
         container_status = container_check_if_image_exists(settings, runtime)
 
@@ -142,7 +157,7 @@ def init(args: Namespace) -> None:
             spinner.succeed("Runtime Docker image exists")  # type: ignore
             logger.info("Docker image exists.")
 
-        env_path = get_deploy_env(deploy_path)
+        env_path = get_project_env(project_path)
         logger.info(f"Environment Path: {env_path}")
 
         spinner.start(text="Installing packages in Docker container")  # type: ignore
@@ -150,7 +165,7 @@ def init(args: Namespace) -> None:
         logger.info("Checking if packages are installed in Docker container")
         container_install_from_packages_list(
             settings=settings,
-            requirements_file=deploy_path / "requirements.txt",
+            requirements_file=project_path / "requirements.txt",
             runtime_image=runtime,
             env_dir=env_path,
             packages=["datallog"],
@@ -162,12 +177,12 @@ def init(args: Namespace) -> None:
         spinner.succeed("Python executable found")  # type: ignore
 
         spinner.start(text="Creating local Python environment")  # type: ignore
-        venv_path = create_local_env(deploy_path, python_executable)
+        venv_path = create_local_env(project_path, python_executable)
 
         spinner.succeed(text="Local Python environment created successfully")  # type: ignore
 
         install_local_python_packages(
-            deploy_dir=deploy_path,
+            project_dir=project_path,
             python_executable=venv_path / "bin" / "python",
             packages=["datallog"],
         )

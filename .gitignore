@@ -1,5 +1,5 @@
 env
-deploy-envs
+project-envs
 .credentials
 .sdk-update-timestamp
 datallog.log
