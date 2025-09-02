@@ -39,7 +39,7 @@ class Execution:
         self._threads: List[Thread] = []
         self._work_item_queue: LifoQueue[WorkItem] = LifoQueue()
         self._execution_props = ExecutionProps(
-            file_path=str(Path("/project") / "apps" / app_name / f"{app_name}.py"),
+            file_path=str(Path("/deploy") / "apps" / app_name / f"{app_name}.py"),
             log_to_dir='/logs' if log_to_dir else None,
         )
 
