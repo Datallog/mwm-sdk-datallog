@@ -161,6 +161,13 @@ parser_sdk_update = subparsers.add_parser(
     formatter_class=argparse.RawTextHelpFormatter,
 )
 
+parser_purge = subparsers.add_parser(
+    "purge",
+    help="Purge the local cache and logs for the current deployment",
+    usage="""datallog purge""",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+
 # --- Example of how to parse arguments ---
 if __name__ == "__main__":
     try:
@@ -168,32 +175,36 @@ if __name__ == "__main__":
         args = parser.parse_args()
         if args.command == "run":
             from subcommands.run import run
-
             run(args)
+
         elif args.command == "push":
             from subcommands.push import push
-
             push(args)
+
         elif args.command == "login":
             from subcommands.login import login
-
             login(args)
+
         elif args.command == "logout":
             from subcommands.logout import logout
-
             logout(args)
+
         elif args.command == "create-project":
             from subcommands.create_project import create_project
-
             create_project(args)
+
         elif args.command == "install":
             from subcommands.install import install
-
             install(args)
+
         elif args.command == "create-app":
             from subcommands.create_app import create_app
-
             create_app(args)
+        elif args.command == "purge":
+            from subcommands.purge import purge
+            purge(args)
+        else:
+            parser.print_help()
     except DatallogError as e:
         logger.error(e.message)
         print(f"\033[91m{e.message}\033[0m")
