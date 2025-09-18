@@ -458,7 +458,7 @@ install_docker_macos() {
         # Verify the installation and print the version
         echo "Running 'docker --version'..."
         /Applications/Docker.app/Contents/Resources/bin/docker --version
-        exit 0
+        return 0
     fi
     
     # Determine the machine architecture
