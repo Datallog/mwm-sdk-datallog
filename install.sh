@@ -497,7 +497,7 @@ install_docker_macos() {
     
     echo "Docker Desktop is launching. Please complete the setup in the GUI, then."
     echo "Press enter to continue"
-    read dummy
+    read -r
 }
 
 
