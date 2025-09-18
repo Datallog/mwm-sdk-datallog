@@ -140,7 +140,7 @@ detect_os() {
     # If we failed to detect something through os-release, consult
     # uname and try to infer things from that.
     if [ -z "$OS" ]; then
-        if type uname >/dev/null 2>&1; then
+        if command -v uname &>/dev/null; then
             case "$(uname)" in
                 Darwin)
                     echo "Detected macOS."
@@ -502,7 +502,7 @@ install_docker_macos() {
 
 
 install_deps_macos() {
-    if ! command -v brew 1>/dev/null 2>&1; then
+    if ! command -v brew &>/dev/null; then
         echo "datallog: Homebrew is not installed, can't continue." >&2
         echo "Please install Homebrew from https://brew.sh/" >&2
         exit 1
@@ -530,16 +530,16 @@ install_deps_macos() {
 }
 
 install_pyenv_macos() {
-    if ! command -v brew 1>/dev/null 2>&1; then
+    if ! command -v brew &>/dev/null; then
         echo "datallog: Homebrew is not installed, can't continue." >&2
         echo "Please install Homebrew from https://brew.sh/" >&2
         exit 1
     fi
     
-    if command -v pyenv &>/dev/null; then
+    if ! command -v pyenv &>/dev/null; then
         export NONINTERACTIVE=1
         brew install pyenv || {
-            echo "Failed to install curl using Homebrew. Please check your Homebrew installation."
+            echo "Failed to install pyenv using Homebrew. Please check your Homebrew installation."
             exit 1
         }
     fi
@@ -589,9 +589,9 @@ install_pyenv_linux() {
     fi
     
     CURL=
-    if type curl >/dev/null; then
+    if command -v curl &>/dev/null; then
         CURL="curl -fsSL"
-        elif type wget >/dev/null; then
+        elif command -v wget &>/dev/null; then
         CURL="wget -q -O-"
     fi
     if [ -z "$CURL" ]; then
