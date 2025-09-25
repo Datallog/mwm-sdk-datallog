@@ -605,7 +605,11 @@ install_pyenv_linux() {
     fi
 
     if ! command -v pyenv &>/dev/null; then
-        $CURL https://pyenv.run | bash
+        if [ ! -d "$PYENV_ROOT" ]; then
+            $CURL https://pyenv.run | bash
+        else
+            echo "Pyenv directory already exists at $PYENV_ROOT. Skipping clone."
+        fi
     
         if [ -n "$PYENV_ROOT" ]; then
             export PYENV_ROOT="$PYENV_ROOT"
