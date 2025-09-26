@@ -226,12 +226,15 @@ def push(args: Namespace) -> None:
                     indent=4,
                 )
             )
+            with open(requirement_file, 'r') as reqfile:
+                requirements_text: str = reqfile.read()
             response_notify_requirements_upload = requests.post(
                 f"{datallog_url}/api/sdk/confirm-requirements-upload",
                 json={
                     "deploy_name": name,
                     "url_s3": presigned_url,
                     "file_hash": requirement_hash,
+                    'requirements_txt': requirements_text
                 },
                 headers=token,
             )

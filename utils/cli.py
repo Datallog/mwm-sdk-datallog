@@ -83,6 +83,31 @@ package_group.add_argument(
     help="Install one or more packages directly",
 )
 
+# --- 'uninstall' command ---
+parser_uninstall = subparsers.add_parser(
+    "uninstall",
+    help="Uninstall a package of the current deployment",
+    usage="""datallog uninstall [options] <package> ...""",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+uninstall_package_group = parser_uninstall.add_mutually_exclusive_group(required=True)
+
+uninstall_package_group.add_argument(
+    "-r",
+    "--requirements",
+    metavar="<file>",
+    default=None,
+    help="Uninstall all packages from a requirements file",
+)
+uninstall_package_group.add_argument(
+    "packages",
+    metavar="package",
+    nargs="*",
+    default=[],
+    help="Uninstall one or more packages directly",
+)
+
+# --- 'run' command ---
 parser_run = subparsers.add_parser(
     "run",
     help="Run a script in the current deployment",
@@ -131,7 +156,7 @@ parser_run.add_argument(
     help="Directory to log the output of the application",
 )
 
-
+# --- 'push' command ---
 parser_push = subparsers.add_parser(
     "push",
     help="Push the current deployment to the Datallog service",
@@ -139,6 +164,7 @@ parser_push = subparsers.add_parser(
     formatter_class=argparse.RawTextHelpFormatter,
 )
 
+# --- 'login' command ---
 parser_login = subparsers.add_parser(
     "login",
     help="Log in to the Datallog service",
@@ -146,6 +172,7 @@ parser_login = subparsers.add_parser(
     formatter_class=argparse.RawTextHelpFormatter,
 )
 
+# --- 'logout' command ---
 parser_logout = subparsers.add_parser(
     "logout",
     help="Log out of the Datallog service",
@@ -153,7 +180,7 @@ parser_logout = subparsers.add_parser(
     formatter_class=argparse.RawTextHelpFormatter,
 )
 
-
+# --- 'sdk-update' command ---
 parser_sdk_update = subparsers.add_parser(
     "sdk-update",
     help="Update the Datallog SDK to the latest version",
@@ -161,6 +188,7 @@ parser_sdk_update = subparsers.add_parser(
     formatter_class=argparse.RawTextHelpFormatter,
 )
 
+# --- 'purge' command ---
 parser_purge = subparsers.add_parser(
     "purge",
     help="Purge the local cache and logs for the current deployment",
@@ -196,7 +224,9 @@ if __name__ == "__main__":
         elif args.command == "install":
             from subcommands.install import install
             install(args)
-
+        elif args.command == "uninstall":
+            from subcommands.uninstall import uninstall
+            uninstall(args)
         elif args.command == "create-app":
             from subcommands.create_app import create_app
             create_app(args)

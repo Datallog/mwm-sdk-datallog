@@ -257,6 +257,54 @@ def container_install_from_packages_list(
     )
 
 
+def container_uninstall_from_requirements(
+    settings: Settings,
+    requirements_file: Path,
+    env_dir: Path,
+    runtime_image: str,
+    new_requirements: Path,
+) -> Tuple[subprocess.Popen[str], str, str]:
+
+    return container_run(
+        settings=settings,
+        runtime_image=runtime_image,
+        command="/uninstall_packages.sh",
+        args=["requirements"],
+        volumes=[
+            (requirements_file, Path("/requirements.txt")),
+            (env_dir, Path("/env")),
+            (new_requirements, Path("/new_requirements.txt")),
+        ],
+    )
+
+def container_uninstall_from_packages_list(
+    settings: Settings,
+    requirements_file: Path,
+    env_dir: Path,
+    runtime_image: str,
+    packages: List[str],
+) -> Tuple[subprocess.Popen[str], str, str]:
+    """
+    Install packages in a container from a list.
+
+    Args:
+        requirements_file (Path): Path to the requirements file (to save).
+        env_dir (Path): Directory for the virtual environment.
+        runtime_image (str): image to use for the runtime.
+        packages (List[str]): List of packages to install.
+    """
+
+    return container_run(
+        settings=settings,
+        runtime_image=runtime_image,
+        command="/uninstall_packages.sh",
+        args=["packages", *packages],
+        volumes=[
+            (requirements_file, Path("/requirements.txt")),
+            (env_dir, Path("/env")),
+        ],
+    )
+
 def container_generate_hash(
     settings: Settings, runtime_image: str, env_dir: Path, project_dir: Path
 ) -> Tuple[str, str]:

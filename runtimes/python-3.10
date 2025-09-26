@@ -15,10 +15,12 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 COPY install_packages.sh /install_packages.sh
 RUN chmod +x /install_packages.sh
-
+ 
 COPY gen_hash.sh /gen_hash.sh
 RUN chmod +x /gen_hash.sh
 
+COPY uninstall_packages.sh /uninstall_packages.sh
+RUN chmod +x /uninstall_packages.sh
 
 # to rebuild the image, only when changing the dockerfile
 

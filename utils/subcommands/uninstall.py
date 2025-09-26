@@ -3,32 +3,32 @@ from pathlib import Path
 from logger import Logger
 from halo import Halo  # type: ignore
 from errors import DatallogError
-from install_local_python import (
+from uninstall_local_python import (
     get_python_executable,
     create_local_env,
-    install_local_packages_from_requirements,
-    install_local_python_packages,
+    uninstall_local_packages_from_requirements,
+    uninstall_local_python_packages,
+    
 )
 from get_project_base_dir import get_project_base_dir
 from parser_project_ini import parse_project_ini
 from container import (
     container_check_if_image_exists,
     container_build,
-    container_install_from_packages_list,
-    container_install_from_requirements,
+    container_uninstall_from_packages_list,
+    container_uninstall_from_requirements,
 )
 from get_project_env import get_project_env
 from errors import (
     DatallogError,
 )
 from get_user_path import get_user_path
-
 from settings import load_settings
 
 logger = Logger(__name__)
 
     
-def install(args: Namespace) -> None:
+def uninstall(args: Namespace) -> None:
     spinner = None
     try:
         settings = load_settings()
@@ -68,22 +68,22 @@ def install(args: Namespace) -> None:
         env_path = get_project_env(project_path)
         logger.info(f"Environment Path: {env_path}")
 
-        spinner.start(text="Installing packages in Docker container")  # type: ignore
+        spinner.start(text="Uninstalling packages in Docker container")  # type: ignore
 
         if args.packages:
-            logger.info(f"Installing packages: {args.packages}")
-            container_install_from_packages_list(
+            logger.info(f"Uninstalling packages: {args.packages}")
+            container_uninstall_from_packages_list(
                 settings=settings,
                 requirements_file=project_path / "requirements.txt",
                 runtime_image=runtime,
                 env_dir=env_path,
                 packages=args.packages,
             )
-            spinner.succeed("Packages installed in Docker container successfully")  # type: ignore
+            spinner.succeed("Packages Uninstalled in Docker container successfully")  # type: ignore
         if args.requirements:
+            logger.info(f"Uninstalling packages from file: {args.requirements}")
             requirements_path = get_user_path() / args.requirements
-            logger.info(f"Installing packages from file: {args.requirements}")
-            container_install_from_requirements(
+            container_uninstall_from_requirements(
                 settings=settings,
                 requirements_file=project_path / "requirements.txt",
                 runtime_image=runtime,
@@ -91,10 +91,10 @@ def install(args: Namespace) -> None:
                 new_requirements=Path(requirements_path).absolute(),
             )
             spinner.succeed(  # type: ignore
-                "Packages installed from file in Docker container successfully"
+                "Packages Uninstalled from file in Docker container successfully"
             )
 
-        spinner.succeed("Packages installed successfully")  # type: ignore
+        spinner.succeed("Packages Uninstalled successfully")  # type: ignore
 
         spinner.start(text="Installing local Python environment. This may take a while...")  # type: ignore
         python_executable = get_python_executable(python_version)
@@ -106,14 +106,14 @@ def install(args: Namespace) -> None:
         spinner.succeed(text="Local Python environment created successfully")  # type: ignore
 
         if args.packages:
-            install_local_python_packages(
+            uninstall_local_python_packages(
                 project_dir=project_path,
                 python_executable=venv_path / "bin" / "python",
                 packages=args.packages,
             )
         if args.requirements:
             requirements_path = get_user_path() / args.requirements
-            install_local_packages_from_requirements(
+            uninstall_local_packages_from_requirements(
                 project_dir=project_path,
                 python_executable=venv_path / "bin" / "python",
                 requirements_file=Path(requirements_path).absolute(),
