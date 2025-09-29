@@ -178,7 +178,7 @@ detect_os() {
             DATALLOG_ADD_USER_TO_DOCKER_GROUP="add_user_to_docker_group"
         ;;
         fedora)
-            if command -v rpm-ostree &> /dev/null; then
+            if command -v rpm-ostree &> /dev/null && rpm-ostree status &> /dev/null; then
                 echo "Detected Fedora Silverblue."
                 DATALLOG_INSTALL_DEPS="rpm_ostree_install_deps"
             else
