@@ -456,6 +456,11 @@ def container_run_app(
         volumes.append((log_to_dir, Path("/logs")))
         
     args = ["-m", "datallog.utils.worker", str(worker_id)]
+    from token_manager import retrieve_token
+    env_tokens = retrieve_token()
+    authorization_token = env_tokens['Authorization']
+    x_api_key = env_tokens['x-api-key']
+    docker_env_args: List[str] = ["-e", f"datallog_user_auth_token={authorization_token}", "-e", f"datallog_x_api_key={x_api_key}"]
 
     return container_run(
         settings=settings,
@@ -463,7 +468,7 @@ def container_run_app(
         command="/env/bin/python",
         volumes=volumes,
         args=args,
-        docker_args=["-w", "/deploy"],
+        docker_args=["-w", "/deploy"] + docker_env_args,
         print_output=True,
     )
 
