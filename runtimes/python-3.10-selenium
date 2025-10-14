@@ -1,0 +1,60 @@
+
+FROM docker.io/library/python:3.10-slim
+ENV DEBIAN_FRONTEND=noninteractive
+# install bash and common dependencies for package installation
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    bash \
+    build-essential \
+    ca-certificates \
+    git \
+    libffi-dev \
+    libssl-dev \
+    python3-dev \
+    unzip \
+    gnupg \
+    wget \
+    python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN apt-get install -y ca-certificates \
+        apt-transport-https
+
+# https://support.mozilla.org/en-US/kb/install-firefox-linux#w_install-firefox-deb-package-for-debian-based-distributions
+RUN install -d -m 0755 /etc/apt/keyrings
+ 
+RUN wget -q https://packages.mozilla.org/apt/repo-signing-key.gpg -O- | gpg --dearmor | tee /etc/apt/keyrings/packages.mozilla.org.gpg > /dev/null
+RUN echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.gpg] https://packages.mozilla.org/apt mozilla main" | tee /etc/apt/sources.list.d/mozilla.list > /dev/null
+
+
+RUN echo 'Package: *' > /etc/apt/preferences.d/mozilla && \
+    echo 'Pin: origin packages.mozilla.org' >> /etc/apt/preferences.d/mozilla && \
+    echo 'Pin-Priority: 1000' >> /etc/apt/preferences.d/mozilla
+
+
+RUN apt-get update && apt-get -y install firefox
+
+# Add Google Chrome's official GPG key and repository
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+
+
+
+# Install Google Chrome stable
+RUN apt-get update && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
+
+
+COPY install_packages.sh /install_packages.sh
+RUN chmod +x /install_packages.sh
+
+COPY uninstall_packages.sh /uninstall_packages.sh
+RUN chmod +x /uninstall_packages.sh
+
+COPY gen_hash.sh /gen_hash.sh
+RUN chmod +x /gen_hash.sh
+
+
+# to rebuild the image, only when changing the dockerfile
+
+RUN date > /build_date.txt

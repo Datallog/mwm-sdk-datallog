@@ -21,7 +21,7 @@ class GetWorkItem(BaseModel):
 
 class Settings(BaseModel):
    container_engine: Literal["docker", "podman"] = "docker"
-
+   gui: bool = True
 
 class GetExecutionProps(BaseModel):
     """
@@ -63,6 +63,7 @@ class ExecutionProps(BaseModel):
        directory is specified, and the worker logs may go to standard output
     """
 
+   
 
 class WorkItem(BaseModel):
     """

@@ -14,6 +14,7 @@ from tempfile import NamedTemporaryFile
 import sys
 from logger import Logger
 from schema import Settings
+from get_selenium_path import get_selenium_path
 import re
 import pytz
 
@@ -137,14 +138,29 @@ def container_run(
         *args (str): Additional arguments for the command.
     """
     volumes_args = [("-v", f"{volume[0]}:{volume[1]}:Z") for volume in volumes]
+
+    if settings.gui:
+        os.system("xhost +local:docker")
+
+        volumes_args.append(("-v", "/tmp/.X11-unix:/tmp/.X11-unix:rw"))
+        docker_args.append("--env=DISPLAY")
+        xauth_path = Path("/tmp/.Xauthority")
+        if xauth_path.exists():
+            docker_args.append("--env=XAUTHORITY=/tmp/.Xauthority")
+            xauth_path.touch()
+            volumes_args.append(("-v", f"{xauth_path}:{xauth_path}:rw"))
+        docker_args.append("--env=DATALOG_GUI=1")
+        docker_args.append("--shm-size=2g")  # Increase shared memory size for GUI applications
+        docker_args.append("-e=HOME=/tmp/home")  # Set HOME to /tmp to avoid permission issues
+        docker_args.append("-e=DATALOG_SELENIUM_DRIVER_PATH=/selenium-drivers")
+        volumes_args.append(("-v", f"{get_selenium_path()}:/selenium-drivers:rw"))
+
     volumes_args_list = [item for sublist in volumes_args for item in sublist]
     
     permissions_args = ["--user", f"{os.getuid()}:{os.getgid()}"]
     if settings.container_engine == "podman":
         permissions_args = ["--userns=keep-id"]
-    
-    
-    
+
     container_command = [
         settings.container_engine,
         "run",

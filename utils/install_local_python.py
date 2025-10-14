@@ -50,13 +50,20 @@ def is_command_available(command: str) -> bool:
     """
     return shutil.which(command) is not None
 
+def get_python_version_mapping(python_version: str) -> str:
+    python_version_mapping: dict[str, str] = {
+        "3.10-selenium": "3.10",
+        "3.11-selenium": "3.11",
+        "3.12-selenium": "3.12",
+    }
+    return python_version_mapping.get(python_version, python_version)
 
 def get_python_executable(python_version: str) -> Path:
     """
     Finds and sets a suitable Python executable based on pyenv.
     This function will install pyenv and the required Python version if they are not found.
     """
-
+    python_version = get_python_version_mapping(python_version)
     if not is_command_available("pyenv"):
         raise UnableToFindPythonExecutableError(
             f"Failed to find 'pyenv' command. Please ensure pyenv is installed and available in your PATH."

@@ -7,3 +7,4 @@ __pycache__
 .stignore
 .stfolder
 settings.json
+selenium-drivers

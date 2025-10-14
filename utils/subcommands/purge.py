@@ -15,6 +15,7 @@ def purge(args: Namespace) -> None:
         "project-envs": base_path / ".." / "project-envs",
         "deploy-envs": base_path / ".." / "deploy-envs",
         "datallog.log": base_path / ".." / "datallog.log",
+        "selenium-drivers": base_path / ".." / "selenium-drivers",
     }
 
     existing_paths = {
