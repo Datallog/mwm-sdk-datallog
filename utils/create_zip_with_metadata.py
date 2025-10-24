@@ -82,7 +82,7 @@ def create_zip_with_metadata(project_path: Path, output_zip_filename: Path) -> N
     logger.info("Metadata content generated successfully.")
     logger.info(f"Metadata content:\n{metadata_json_str}")
     metadata_filename = "build.json"
-    project_dir = Path("deploy")
+    project_dir = Path("project")
     try:
         with zipfile.ZipFile(output_zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
             # Add all files from the source directory
