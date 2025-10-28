@@ -14,6 +14,8 @@ RUN apt-get update && \
     unzip \
     gnupg \
     wget \
+    curl \
+    jq \
     python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
@@ -38,12 +40,22 @@ RUN apt-get update && apt-get -y install firefox
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome-keyring.gpg \
     && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
 
-
+RUN curl -SsLf https://api.github.com/repos/mozilla/geckodriver/releases/latest | jq -r '.assets[] | select(.name | endswith("linux64.tar.gz")) | .browser_download_url' | xargs -I {} wget -qO /tmp/geckodriver.tar.gz {} \
+    && tar -xzf /tmp/geckodriver.tar.gz -C /tmp/ && \
+    mv /tmp/geckodriver /usr/bin/geckodriver && \
+    chmod +x /usr/bin/geckodriver && \
+    rm -rf /tmp/geckodriver.tar.gz
 
 # Install Google Chrome stable
 RUN apt-get update && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
+    RUN DRIVER_URL=$(wget -qO- https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | jq -r '.channels.Stable.downloads.chromedriver[] | select(.platform=="linux64") | .url') && \
+    wget -qO /tmp/chromedriver.zip $DRIVER_URL && \
+    unzip /tmp/chromedriver.zip -d /tmp/ && \
+    mv /tmp/chromedriver-linux64/chromedriver /usr/bin/chromedriver && \
+    chmod +x /usr/bin/chromedriver && \
+    rm -rf /tmp/chromedriver.zip /tmp/chromedriver-linux64
 
 COPY install_packages.sh /install_packages.sh
 RUN chmod +x /install_packages.sh
