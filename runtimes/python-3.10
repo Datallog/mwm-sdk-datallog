@@ -24,4 +24,6 @@ RUN chmod +x /uninstall_packages.sh
 
 # to rebuild the image, only when changing the dockerfile
 
+
+
 RUN date > /build_date.txt
