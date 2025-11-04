@@ -9,7 +9,384 @@ export DATALLOG_CURRENT_PATH=$(pwd)
 cd $(dirname "$0")/../scripts
 source ./get_env_sdk_path.sh
 
+#!/usr/bin/env bash
 
+set -e
+
+[ -n "$DATALLOG_DEBUG" ] && set -x
+
+declare DATALLOG_INSTALL_CURL=""
+declare DATALLOG_INSTALL_GIT=""
+declare DATALLOG_INSTALL_PYENV_DEPS=""
+declare DATALLOG_INSTALL_PYENV=""
+declare DATALLOG_START_DOCKER_SERVICE=""
+declare DATALLOG_ENABLE_DOCKER_SERVICE=""
+declare DATALLOG_ADD_USER_TO_DOCKER_GROUP=""
+declare DATALLOG_USE_PODMAN=""
+declare DATALLOG_SUDO="sudo"
+declare DATALLOG_CAN_ROOT=""
+declare DATALLOG_REQUIRE_REBOOT=""
+declare DATALLOG_ROOT=""
+
+declare DATALLOG_MACOS_TEMP_DIR="/tmp"
+# Name for the downloaded DMG file
+declare DATALLOG_MACOS_DMG_FILE="Docker.dmg"
+# Full path for the downloaded file
+declare DATALLOG_MACOS_DMG_PATH="$DATALLOG_MACOS_TEMP_DIR/$DATALLOG_MACOS_DMG_FILE"
+# The volume name after mounting the DMG
+declare DATALLOG_MACOS_DOCKER_VOLUME="/Volumes/Docker"
+
+export DEBIAN_FRONTEND=noninteractive
+
+
+detect_os() {
+    
+    OS=""
+    VERSION=""
+    PACKAGETYPE=""
+    APT_KEY_TYPE="" # Only for apt-based distros
+    APT_SYSTEMCTL_START=false # Only needs to be true for Kali
+    TRACK="${TRACK:-stable}"
+    
+    if [ -f /etc/os-release ]; then
+        # /etc/os-release populates a number of shell variables. We care about the following:
+        #  - ID: the short name of the OS (e.g. "debian", "freebsd")
+        #  - VERSION_ID: the numeric release version for the OS, if any (e.g. "18.04")
+        #  - VERSION_CODENAME: the codename of the OS release, if any (e.g. "buster")
+        #  - UBUNTU_CODENAME: if it exists, use instead of VERSION_CODENAME
+        . /etc/os-release
+        case "$ID" in
+            ubuntu|pop|neon|zorin|tuxedo)
+                OS="ubuntu"
+                if [ "${UBUNTU_CODENAME:-}" != "" ]; then
+                    VERSION="$UBUNTU_CODENAME"
+                else
+                    VERSION="$VERSION_CODENAME"
+                fi
+            ;;
+            debian)
+                OS="$ID"
+            ;;
+            linuxmint)
+                if [ "${UBUNTU_CODENAME:-}" != "" ]; then
+                    OS="ubuntu"
+                    VERSION="$UBUNTU_CODENAME"
+                    elif [ "${DEBIAN_CODENAME:-}" != "" ]; then
+                    OS="debian"
+                    VERSION="$DEBIAN_CODENAME"
+                else
+                    OS="ubuntu"
+                    VERSION="$VERSION_CODENAME"
+                fi
+            ;;
+            elementary)
+                OS="ubuntu"
+                VERSION="$UBUNTU_CODENAME"
+            ;;
+            galliumos)
+                OS="ubuntu"
+                PACKAGETYPE="apt"
+                VERSION="bionic"
+                APT_KEY_TYPE="legacy"
+            ;;
+            centos)
+                OS="$ID"
+                VERSION="$VERSION_ID"
+            ;;
+            ol)
+                OS="oracle"
+                VERSION="$(echo "$VERSION_ID" | cut -f1 -d.)"
+            ;;
+            rhel|miraclelinux)
+                OS="$ID"
+                if [ "$ID" = "miraclelinux" ]; then
+                    OS="rhel"
+                fi
+                VERSION="$(echo "$VERSION_ID" | cut -f1 -d.)"
+            ;;
+            fedora)
+                OS="$ID"
+                VERSION=""
+            ;;
+            rocky|almalinux|nobara|openmandriva|sangoma|risios|cloudlinux|alinux|fedora-asahi-remix)
+                OS="rhel"
+                VERSION=""
+            ;;
+            amzn)
+                OS="amazon-linux"
+                VERSION="$VERSION_ID"
+            ;;
+            arch|archarm|endeavouros|blendos|garuda|archcraft|cachyos)
+                OS="arch"
+                VERSION=""
+            ;;
+            manjaro|manjaro-arm|biglinux)
+                OS="manjaro"
+                VERSION=""
+            ;;
+            osmc)
+                OS="debian"
+                VERSION="bullseye"
+            ;;
+        esac
+    fi
+    
+    # If we failed to detect something through os-release, consult
+    # uname and try to infer things from that.
+    if [ -z "$OS" ]; then
+        if command -v uname &>/dev/null; then
+            case "$(uname)" in
+                Darwin)
+                    echo "Detected macOS."
+                    OS="macos"
+                    VERSION="$(sw_vers -productVersion | cut -f1-2 -d.)"
+                ;;
+                Linux)
+                    echo "Detected Linux."
+                    OS="other-linux"
+                    VERSION=""
+                    PACKAGETYPE=""
+                ;;
+            esac
+        fi
+    fi
+    
+    case "$OS" in
+        ubuntu)
+            DATALLOG_INSTALL_DEPS="install_deps_ubuntu"
+        ;;
+        debian)
+            DATALLOG_INSTALL_DEPS="install_deps_debian"
+        ;;
+        fedora)
+            if command -v rpm-ostree &> /dev/null && rpm-ostree status &> /dev/null; then
+                DATALLOG_INSTALL_DEPS="rpm_ostree_install_deps"
+            else
+                DATALLOG_INSTALL_DEPS="dnf_install_deps"
+            fi
+        ;;
+        arch|manjaro)
+            DATALLOG_INSTALL_DEPS="pacman_install_deps"
+        ;;
+        macos)
+            DATALLOG_INSTALL_DEPS="install_deps_macos"
+        ;;
+        other-linux)
+            OS_UNSUPPORTED=1
+        ;;
+        *)
+            OS_UNSUPPORTED=1
+        ;;
+    esac
+    
+}
+
+
+##########################
+# Arch Linux / Manjaro Installer
+##########################
+
+pacman_install_deps() {
+    package_list="git curl xorg-xhost docker docker-buildx base base-devel gcc make zlib bzip2 openssl xz readline sqlite libffi findutils"
+    package_to_install=""
+    for pkg in $package_list; do
+        if ! pacman -Q "$pkg" &>/dev/null; then
+            package_to_install="$package_to_install $pkg"
+        fi
+    done
+    if [ -n "$package_to_install" ]; then
+        echo "Installing missing packages: $package_to_install"
+        set -e
+        $DATALLOG_SUDO pacman -Syy --noconfirm $package_to_install
+        set +e
+        echo "All required packages have been installed."
+    fi
+}
+
+##########################
+# Ubuntu Installer
+##########################
+
+install_deps_ubuntu() {
+    echo "Updating package index and installing prerequisites..."
+    
+    package_list="ca-certificates git curl x11-xserver-utils build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
+    package_to_install=""
+    
+    for pkg in $package_list; do
+        if ! dpkg -s "$pkg" &>/dev/null; then
+            package_to_install="$package_to_install $pkg"
+        fi
+    done
+    
+    if [ -n "$package_to_install" ]; then
+        echo "Installing missing packages: $package_to_install"
+        set -e
+        $DATALLOG_SUDO apt-get install -y $package_to_install
+        set +e
+        echo "All required packages have been installed."
+    fi
+}
+
+
+###########################
+# Debian Installer
+###########################
+
+install_deps_debian() {
+    echo "Updating package index and installing prerequisites..."
+    $DATALLOG_SUDO apt-get update
+    
+    package_list="ca-certificates curl x11-xserver-utils gnupg lsb-release build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
+    package_to_install=""
+    
+    for pkg in $package_list; do
+        if ! dpkg -s "$pkg" &>/dev/null; then
+            package_to_install="$package_to_install $pkg"
+        fi
+    done
+    
+    if [ -n "$package_to_install" ]; then
+        echo "Installing missing packages: $package_to_install"
+        set -e
+        $DATALLOG_SUDO apt-get install -y $package_to_install
+        set +e
+        echo "All required packages have been installed."
+    fi
+    
+}
+
+
+##########################
+# rpm ostree
+##########################
+
+rpm_ostree_install_deps() {
+    echo "Checking and installing prerequisite packages for pyenv..."
+    package_list="curl git gcc podman xhost make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils"
+    package_to_install=""
+    
+    for pkg in $package_list; do
+        if ! rpm-ostree status | grep -q "$pkg"; then
+            package_to_install="$package_to_install $pkg"
+        fi
+    done
+    
+    if [ -n "$package_to_install" ]; then
+        echo "Installing missing packages: $package_to_install"
+        rpm-ostree install --allow-inactive --idempotent $package_to_install
+        DATALLOG_REQUIRE_REBOOT="true"
+        echo "All required packages have been installed."
+    fi
+}
+
+##########################
+# dnf-based Fedora Installer
+##########################
+
+dnf_install_deps() {
+    echo "Checking and installing prerequisite packages for pyenv..."
+    package_list="curl git gcc podman xhost make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils"
+    package_to_install=""
+    
+    for pkg in $package_list; do
+        if ! dnf list --installed "$pkg" &>/dev/null; then
+            package_to_install="$package_to_install $pkg"
+        fi
+    done
+    
+    if [ -n "$package_to_install" ]; then
+        echo "Installing missing packages: $package_to_install"
+        $DATALLOG_SUDO dnf install -y $package_to_install
+        echo "All required packages have been installed."
+    fi
+}
+
+##########################
+# macOS Installer
+##########################
+
+# Function to clean up downloaded files
+cleanup_macos() {
+    echo "Cleaning up..."
+    # Unmount the Docker volume if it's mounted
+    if [ -d "$DATALLOG_MACOS_DOCKER_VOLUME" ]; then
+        echo "Unmounting Docker volume..."
+        hdiutil detach "$DATALLOG_MACOS_DOCKER_VOLUME" -quiet || true
+    fi
+    # Remove the downloaded DMG file
+    if [ -f "$DATALLOG_MACOS_DMG_PATH" ]; then
+        echo "Removing downloaded DMG file..."
+        rm -f "$DATALLOG_MACOS_DMG_PATH"
+    fi
+    echo "Cleanup complete."
+}
+
+
+install_deps_macos() {
+    if ! command -v brew &>/dev/null; then
+        echo "datallog: Homebrew is not installed, can't continue." >&2
+        echo "Please install Homebrew from https://brew.sh/" >&2
+        exit 1
+    fi
+    
+    if command -v git &>/dev/null; then
+        if git_version=$(git --version 2>/dev/null); then
+            export NONINTERACTIVE=1
+            brew install git || {
+                echo "Failed to install git using Homebrew. Please check your Homebrew installation."
+                exit 1
+            }
+        fi
+    fi
+    
+    if command -v curl &>/dev/null; then
+        if curl_version=$(curl --version 2>/dev/null); then
+            export NONINTERACTIVE=1
+            brew install curl || {
+                echo "Failed to install curl using Homebrew. Please check your Homebrew installation."
+                exit 1
+            }
+        fi
+    fi
+}
+
+checkout() {
+    [ -d "$2" ] || git -c advice.detachedHead=0 -c core.autocrlf=false clone --branch "$3" --depth 1 "$1" "$2" || failed_checkout "$1"
+}
+
+
+main() {
+    if [ "$(id -u)" -eq 0 ]; then
+        if [ -z "$DATALLOG_ALLOW_ROOT" ]; then
+            echo "Error: Running this installer as root is not allowed for safety reasons. You can set the environment variable DATALLOG_ALLOW_ROOT to override this, but it is not recommended." >&2
+            exit 1
+        else
+            echo "Warning: Running as root because DATALLOG_ALLOW_ROOT is set. Proceed with caution." >&2
+        fi
+    fi
+    
+    if [ -z "$DATALLOG_ROOT" ]; then
+        if [ -z "$HOME" ]; then
+            printf "$0: %s\n" \
+            "Either \$DATALLOG_ROOT or \$HOME must be set to determine the install location." \
+            >&2
+            exit 1
+        fi
+        export DATALLOG_ROOT="${HOME}/.datallog"
+    fi
+    
+    detect_os
+    
+
+    
+    
+    # Install dependencies
+    if [ -n "$DATALLOG_INSTALL_DEPS" ]; then
+        $DATALLOG_INSTALL_DEPS
+    fi
+    
+}
 
 safe_date_delta() {
      if type uname >/dev/null 2>&1; then
@@ -23,6 +400,8 @@ safe_date_delta() {
         esac
     fi
 }
+
+main
 
 
 date_timestamp=$(date +%Y-%m-%dT%H:%M:%S)
