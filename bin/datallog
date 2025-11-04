@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #!/bin/bash
 
 if [ "$DATALLLOG_LOG_LEVEL" == "debug" ]; then
@@ -9,7 +10,6 @@ export DATALLOG_CURRENT_PATH=$(pwd)
 cd $(dirname "$0")/../scripts
 source ./get_env_sdk_path.sh
 
-#!/usr/bin/env bash
 
 set -e
 
@@ -159,6 +159,7 @@ detect_os() {
             DATALLOG_INSTALL_DEPS="install_deps_debian"
         ;;
         fedora)
+            
             if command -v rpm-ostree &> /dev/null && rpm-ostree status &> /dev/null; then
                 DATALLOG_INSTALL_DEPS="rpm_ostree_install_deps"
             else

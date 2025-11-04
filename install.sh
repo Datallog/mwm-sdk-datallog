@@ -178,11 +178,12 @@ detect_os() {
             DATALLOG_ADD_USER_TO_DOCKER_GROUP="add_user_to_docker_group"
         ;;
         fedora)
-            if command -v rpm-ostree &> /dev/null && rpm-ostree status &> /dev/null; then
-                echo "Detected Fedora Silverblue."
-                DATALLOG_INSTALL_DEPS="rpm_ostree_install_deps"
+            read -p "Are you using an rpm-ostree based Fedora (like Silverblue)? [y/N] " -r response
+            if [[ "${response,,}" =~ ^(y|yes)$ ]]; then
+                echo "Fedora Silverblue/rpm-ostree based system selected."
+                DATALOG_INSTALL_DEPS="rpm_ostree_install_deps"
             else
-                echo "Detected Fedora Workstation."
+                echo "Fedora Workstation/dnf based system selected."
                 DATALLOG_INSTALL_DEPS="dnf_install_deps"
             fi
             DATALLOG_INSTALL_PYENV="install_pyenv_linux"
