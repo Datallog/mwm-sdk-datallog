@@ -220,7 +220,7 @@ detect_os() {
 ##########################
 
 pacman_install_deps() {
-    package_list="git curl docker docker-buildx base base-devel gcc make zlib bzip2 openssl xz readline sqlite libffi findutils"
+    package_list="git curl xorg-xhost docker docker-buildx base base-devel gcc make zlib bzip2 openssl xz readline sqlite libffi findutils"
     package_to_install=""
     for pkg in $package_list; do
         if ! pacman -Q "$pkg" &>/dev/null; then
@@ -247,7 +247,7 @@ pacman_install_deps() {
 install_deps_ubuntu() {
     echo "Updating package index and installing prerequisites..."
     
-    package_list="ca-certificates git curl build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
+    package_list="ca-certificates git curl x11-xserver-utils build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
     package_to_install=""
     
     for pkg in $package_list; do
@@ -312,7 +312,7 @@ install_deps_debian() {
     echo "Updating package index and installing prerequisites..."
     $DATALLOG_SUDO apt-get update
     
-    package_list="ca-certificates curl gnupg lsb-release build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
+    package_list="ca-certificates curl x11-xserver-utils gnupg lsb-release build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
     package_to_install=""
     
     for pkg in $package_list; do
@@ -382,7 +382,7 @@ install_docker_debian() {
 
 rpm_ostree_install_deps() {
     echo "Checking and installing prerequisite packages for pyenv..."
-    package_list="curl git gcc podman make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils"
+    package_list="curl git gcc podman xhost make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils"
     package_to_install=""
     
     for pkg in $package_list; do
@@ -409,7 +409,7 @@ rpm_ostree_install_deps() {
 
 dnf_install_deps() {
     echo "Checking and installing prerequisite packages for pyenv..."
-    package_list="curl git gcc podman make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils"
+    package_list="curl git gcc podman xhost make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils"
     package_to_install=""
     
     for pkg in $package_list; do
