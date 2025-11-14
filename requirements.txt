@@ -6,6 +6,7 @@ colorama==0.4.6
 cryptography==45.0.5
 halo==0.0.31
 idna==3.10
+inquirerpy==0.3.4
 jaraco.classes==3.4.0
 jaraco.context==6.0.1
 jaraco.functools==4.2.1

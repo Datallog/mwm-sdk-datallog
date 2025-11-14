@@ -2,7 +2,7 @@ import configparser
 import shutil
 from argparse import Namespace
 from pathlib import Path
-
+from InquirerPy import inquirer # type: ignore
 from halo import Halo  # type: ignore
 
 from errors import DatallogError, UnableToSaveConfigError
@@ -10,6 +10,7 @@ from get_user_path import get_user_path
 from logger import Logger
 from get_project_env import get_project_env
 from validate_name import validate_name
+from fetch_runtime_versions import fetch_runtime_versions
 from container import (
     container_check_if_image_exists,
     container_build,
@@ -111,7 +112,17 @@ def create_project(args: Namespace) -> None:
     - Can contain letters, digits (0-9), underscores (_), and hyphens (-)
     - Must be between 3 and 50 characters long."""
                 )
-            runtime = "python-3.10"
+            runtimes = fetch_runtime_versions("https://mwm.datallog.com/platform-api/list-runtimes")
+            if not runtimes:
+                # Couldn't get runtimes from server, show only local based runtimes
+                runtimes = [
+                    "python-3.10",
+                    "Selenium-Python 3.10"
+                ]
+
+            runtime = inquirer.select(message="Select your runtime:", # type: ignore
+                                    default="python-3.10",
+                                      choices=runtimes).execute() # type: ignore
             region = "us-east-1"
             
             
@@ -123,7 +134,7 @@ def create_project(args: Namespace) -> None:
             project_ini_path = project_path / "project.ini"
             create_project_config(
                 name=project_name,
-                runtime=runtime,
+                runtime=runtime, # type: ignore
                 region=region,
                 output_path=project_ini_path,
             )
@@ -136,11 +147,11 @@ def create_project(args: Namespace) -> None:
         spinner.start()  # type: ignore
 
 
-        python_version = runtime[(len("python-")) :].strip()
+        python_version = runtime[(len("python-")) :].strip() # type: ignore
 
         spinner.succeed("project parameters loaded successfully")  # type: ignore
         spinner.start(text="Checking Docker image")  # type: ignore
-        container_status = container_check_if_image_exists(settings, runtime)
+        container_status = container_check_if_image_exists(settings, runtime) # type: ignore
 
         if container_status != "Yes":
             if container_status == "Outdated":
@@ -150,7 +161,7 @@ def create_project(args: Namespace) -> None:
 
             spinner.start(text="Building Docker image")  # type: ignore
             logger.warning("Docker image does not exist. Building the image...")
-            container_build(settings, runtime)
+            container_build(settings, runtime) # type: ignore
             spinner.succeed("Docker image built successfully")  # type: ignore
             logger.info("Docker image built successfully.")
         else:
@@ -166,14 +177,14 @@ def create_project(args: Namespace) -> None:
         container_install_from_packages_list(
             settings=settings,
             requirements_file=project_path / "requirements.txt",
-            runtime_image=runtime,
+            runtime_image=runtime, # type: ignore
             env_dir=env_path,
             packages=["datallog"],
         )
         spinner.succeed("Packages installed in Docker container successfully")  # type: ignore
 
         spinner.start(text="Installing local Python environment. This may take a while...")  # type: ignore
-        python_executable = get_python_executable(python_version)
+        python_executable = get_python_executable(python_version) # type: ignore
         spinner.succeed("Python executable found")  # type: ignore
 
         spinner.start(text="Creating local Python environment")  # type: ignore
