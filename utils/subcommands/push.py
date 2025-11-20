@@ -18,6 +18,7 @@ from errors import (
     DatallogError,
     LoginRequiredError,
     NetworkError,
+    PlanExpiredError,
     UnableToCreateProjectError,
 )
 from get_project_base_dir import get_project_base_dir
@@ -155,6 +156,10 @@ def push(args: Namespace) -> None:
                 if "Invalid token" in error_message or "Forbidden" in error_message_2:
                     raise LoginRequiredError(
                         "Your token is invalid. Please log in first with `datallog login`."
+                    )
+                elif "Your Plan have expired" in error_message_2:
+                    raise PlanExpiredError(
+                        "Your Plan have expired, please renew your plan and try again."
                     )
             raise NetworkError("Failed to check project hashes")
 

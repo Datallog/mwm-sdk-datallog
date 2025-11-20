@@ -30,7 +30,13 @@ class LoginRequiredError(DatallogError):
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
-        
+
+class PlanExpiredError(DatallogError):
+    """Custom exception for operations when user plan have expired."""
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
 class InvalidLoginTokenError(DatallogError):
     """Custom exception for invalid login tokens."""
     def __init__(self, message: str):
