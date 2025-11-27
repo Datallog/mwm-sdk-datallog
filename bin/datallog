@@ -211,7 +211,7 @@ pacman_install_deps() {
 install_deps_ubuntu() {
     echo "Updating package index and installing prerequisites..."
     
-    package_list="ca-certificates git curl x11-xserver-utils build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
+    package_list="ca-certificates git curl x11-xserver-utils build-essential zlib1g-dev libncurses-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
     package_to_install=""
     
     for pkg in $package_list; do

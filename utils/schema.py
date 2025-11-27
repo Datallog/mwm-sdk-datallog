@@ -159,7 +159,6 @@ class WorkerMarkAsIdle(BaseModel):
     to mark it as idle. This is typically used to indicate that the worker
     is not currently processing any tasks and is available for new work.
     """
-
     type: Literal["MARK_AS_IDLE"] = "MARK_AS_IDLE"
     """Identifies the type of message, indicating the worker should be marked as idle."""
 
