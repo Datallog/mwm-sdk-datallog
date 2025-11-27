@@ -127,7 +127,7 @@ def push(args: Namespace) -> None:
             logger.info("Creating new project as it does not exist.")
             spinner.start(text="Creating new project")  # type: ignore
             response_create_app = requests.post(
-                f"{datallog_url}/api/sdk/create-deploy",
+                f"{datallog_url}/api/sdk/create-project",
                 json={
                     "docker_version": runtime,
                     "name": name,
