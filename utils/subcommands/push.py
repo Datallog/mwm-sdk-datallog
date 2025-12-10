@@ -262,7 +262,8 @@ def push(args: Namespace) -> None:
 
         logger.info(f"Requirements build ID: {requirements_build_id}")
         status = "BUILDING"
-        spinner.start(text="Waiting for requirements image build to finish")  # type: ignore
+        if send_requirements:
+            spinner.start(text="Waiting for requirements image build to finish (this may take a few minutes)")
         requirements_build_status_json: Dict[str, str] = {}
         while status == "BUILDING":
             response_requirements_build_status = requests.get(
@@ -287,7 +288,8 @@ def push(args: Namespace) -> None:
                 requirements_build_status_json.get("message", "Unknown error")
             )
         else:
-            spinner.succeed("Requirements image build finished")  # type: ignore
+            if send_requirements:
+                spinner.succeed("Requirements image build finished")  # type: ignore
 
         if send_apps:
             spinner.start(text="Generating applications bundle")  # type: ignore
@@ -362,7 +364,7 @@ def push(args: Namespace) -> None:
             )
         logger.info(f"Applications build ID: {applications_build_id}")
         status = "BUILDING"
-        spinner.start(text="Waiting for applications image build to finish")  # type: ignore
+        spinner.start(text="Waiting for applications image build to finish (this may take a few minutes)")  # type: ignore
 
         while status == "BUILDING":
             response_apps_build_status = requests.get(
@@ -375,11 +377,23 @@ def push(args: Namespace) -> None:
             logger.info(f"Applications build status: {status}")
             if status == "BUILDING":
                 sleep(5)
-        spinner.succeed("Applications image build finished")  # type: ignore
-
+        if send_apps:
+            spinner.succeed("Applications image build finished")
+        if not send_requirements and not send_apps:
+            # Caso: O script rodou, checou hashes e viu que não precisava enviar nada
+            spinner.succeed("Project is already up to date", boxed=True) # type: ignore
+        else:
+            # Caso: Houve upload de requirements ou de código
+            spinner.succeed("Project successfully updated and deployed", boxed=True) # type: ignore
     except DatallogError as e:
         if spinner:
             spinner.fail(f"Error: {e}")  # type: ignore
         else:
             logger.error(f"Error: {e}")
             print(f"\033[91m{e.message}\033[0m")
+    except Exception as e:
+        if spinner:
+            spinner.fail(f"Unexpected error: {str(e)}", boxed=True)
+        else:
+            logger.error("Unexpected error")
+            print(f"\033[91mUnexpected error: {str(e)}\033[0m")

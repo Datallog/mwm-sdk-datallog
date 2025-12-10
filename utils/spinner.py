@@ -107,15 +107,38 @@ class Spinner:
             self._temp_capture.close()
             self._temp_capture = None
 
-    def succeed(self, message: str = "Done"):
+    def _print_boxed_message(self, message: str, color: str, icon: str):
+            """Helper to draw a box around message."""
+            # Mounts central text with spacing
+            content = f"  {icon} {message}  "
+            width = len(content)
+            
+            # Creates box parts using selected style
+            TOP = f"{color}{BOLD}┏{'━' * width}┓{RESET}"
+            TITLE = f"{color}{BOLD}┃{content}┃{RESET}"
+            BOTTOM = f"{color}{BOLD}┗{'━' * width}┛{RESET}"
+            
+            print(TOP)
+            print(TITLE)
+            print(BOTTOM)
+
+    def succeed(self, message: str = "Done", boxed: bool = False):
         self._stop_spinner() 
         self._restore_streams_and_print_captured()
-        print(f"{GREEN}{BOLD}✔ {message}{RESET}")
+        if boxed:
+            self._print_boxed_message(message, GREEN, "✔")
+        else:
+            print(f"{GREEN}{BOLD}✔ {message}{RESET}")
 
-    def fail(self, message: str = "Failed"):
+
+    def fail(self, message: str = "Failed", boxed: bool = False):
         self._stop_spinner()
         self._restore_streams_and_print_captured()
-        print(f"{RED}{BOLD}✖ {message}{RESET}")
+
+        if boxed:
+            self._print_boxed_message(message, RED, "✖")
+        else:
+            print(f"{RED}{BOLD}✖ {message}{RESET}")
 
     def _stop_spinner(self):
         if not self._running:
