@@ -1,7 +1,7 @@
 from argparse import Namespace
 from pathlib import Path
 from logger import Logger
-from halo import Halo  # type: ignore
+from spinner import Spinner
 from errors import DatallogError
 from install_local_python import (
     get_python_executable,
@@ -32,7 +32,7 @@ def install(args: Namespace) -> None:
     spinner = None
     try:
         settings = load_settings()
-        spinner = Halo(text="Loading project", spinner="dots") # type: ignore
+        spinner = Spinner("Loading project...")
         spinner.start()  # type: ignore
         project_path = get_project_base_dir()
         logger.info(f"Project Base Directory: {project_path}")
@@ -94,7 +94,7 @@ def install(args: Namespace) -> None:
                 "Packages installed from file in Docker container successfully"
             )
 
-        spinner.succeed("Packages installed successfully")  # type: ignore
+        spinner.succeed(message="Packages installed successfully")  # type: ignore
 
         spinner.start(text="Installing local Python environment. This may take a while...")  # type: ignore
         python_executable = get_python_executable(python_version)
@@ -103,7 +103,8 @@ def install(args: Namespace) -> None:
         spinner.start(text="Creating local Python environment")  # type: ignore
         venv_path = create_local_env(project_path, python_executable)
 
-        spinner.succeed(text="Local Python environment created successfully")  # type: ignore
+        spinner.succeed(message="Local Python environment created successfully")  # type: ignore
+        spinner.start(text="Installing packages locally")
 
         if args.packages:
             install_local_python_packages(
@@ -118,6 +119,8 @@ def install(args: Namespace) -> None:
                 python_executable=venv_path / "bin" / "python",
                 requirements_file=Path(requirements_path).absolute(),
             )
+        spinner.succeed(message="Packages installed successfully")
+
 
     except DatallogError as e:
         if spinner:

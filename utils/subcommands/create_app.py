@@ -1,7 +1,5 @@
 from argparse import Namespace
 from pathlib import Path
-from halo import Halo  # type: ignore
-
 from get_project_base_dir import get_project_base_dir
 
 from logger import Logger

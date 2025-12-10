@@ -4,7 +4,6 @@ from argparse import Namespace
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from time import sleep
-
 import requests
 from container import (
     Dict,
@@ -24,6 +23,7 @@ from errors import (
 from get_project_base_dir import get_project_base_dir
 from get_project_env import get_project_env
 from halo import Halo  # type: ignore
+from spinner import Spinner
 from logger import Logger
 from parser_project_ini import parse_project_ini
 from token_manager import retrieve_token
@@ -48,7 +48,7 @@ def push(args: Namespace) -> None:
             )
 
         logger.info(f"cwd: {os.environ.get("DATALLOG_CURRENT_PATH", os.getcwd())}")
-        spinner = Halo(text="Loading project", spinner="dots")  # type: ignore
+        spinner = Spinner("Loading project...")
         spinner.start()  # type: ignore
         project_path = get_project_base_dir()
         logger.info(f"Project Base Directory: {project_path}")
@@ -249,7 +249,7 @@ def push(args: Namespace) -> None:
                 raise Exception(
                     f"Failed to confirm requirements upload: {response_notify_requirements_upload.text}"
                 )
-            spinner.succeed(text="Requirements uploaded successfully")  # type: ignore
+            spinner.succeed(message="Requirements uploaded successfully")  # type: ignore
 
             requirements_build_id = response_notify_requirements_upload.json().get(
                 "requirements_build_id"
@@ -350,7 +350,7 @@ def push(args: Namespace) -> None:
 
             logger.info(response_notify_apps_upload.text)
             logger.info(str(response_notify_apps_upload.status_code))
-            spinner.succeed(text="Applications uploaded successfully")  # type: ignore
+            spinner.succeed(message="Applications uploaded successfully")  # type: ignore
 
             if response_notify_apps_upload.status_code != 201:
                 raise Exception(

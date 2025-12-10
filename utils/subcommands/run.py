@@ -11,7 +11,7 @@ from container import (
 )
 from errors import InvalidAppError
 from worker_server import WorkerServer
-from halo import Halo  # type: ignore
+from spinner import Spinner
 
 from settings import load_settings
 
@@ -51,7 +51,7 @@ def run(args: Namespace) -> None:
                 f"Application file '{app_path}' does not exist. Please check the app name."
             )
 
-        spinner = Halo(text="Loading project", spinner="dots")  # type: ignore
+        spinner = Spinner("Loading project...")
 
         project_ini = parse_project_ini(project_path / "project.ini")
 

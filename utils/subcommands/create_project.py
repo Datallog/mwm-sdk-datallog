@@ -3,8 +3,7 @@ import shutil
 from argparse import Namespace
 from pathlib import Path
 from InquirerPy import inquirer # type: ignore
-from halo import Halo  # type: ignore
-
+from spinner import Spinner
 from errors import DatallogError, UnableToSaveConfigError
 from get_user_path import get_user_path
 from logger import Logger
@@ -79,7 +78,7 @@ def create_project(args: Namespace) -> None:
         current_path: Path = get_user_path()
         project_name = args.name.strip() if args.name.strip() else ''
         
-        spinner = Halo(text="Creating project", spinner="dots") # type: ignore
+        spinner = Spinner("Loading project...")
         project_path = current_path
         project_ini_path = project_path / "project.ini"
         
@@ -190,7 +189,7 @@ def create_project(args: Namespace) -> None:
         spinner.start(text="Creating local Python environment")  # type: ignore
         venv_path = create_local_env(project_path, python_executable)
 
-        spinner.succeed(text="Local Python environment created successfully")  # type: ignore
+        spinner.succeed(message="Local Python environment created successfully")  # type: ignore
 
         install_local_python_packages(
             project_dir=project_path,

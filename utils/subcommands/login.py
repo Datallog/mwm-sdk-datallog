@@ -5,7 +5,7 @@ from token_manager import encode_token, save_token
 import requests
 from variables import datallog_url
 from time import sleep
-from halo import Halo  # type: ignore
+from spinner import Spinner
 
 logger = Logger(__name__)
 
@@ -32,7 +32,7 @@ def login(args: Namespace) -> None:
         "Authorization": authorization,
         "x-api-key": x_api_key,
     }
-    spinner = Halo(text="Verifying token", spinner="dots") # type: ignore
+    spinner = Spinner("Loading project...")
     spinner.start()  # type: ignore
     for _ in range(60):
         response = requests.post(
