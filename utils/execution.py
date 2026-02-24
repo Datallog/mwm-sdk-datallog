@@ -9,8 +9,9 @@ from schema import (
     WorkItem,
     WorkerError,
 )
+from token_manager import retrieve_token
 import os
-from container import container_run_app
+from container import container_run_automation
 
 if TYPE_CHECKING:
     from worker_server import WorkerServer
@@ -24,7 +25,7 @@ class Execution:
         runtime_image: str,
         project_dir: Path,
         env_dir: Path,
-        app_name: str,
+        automation_name: str,
         seed: Optional[Any] = None,
         parallelism: int = 1,
         log_to_dir: Optional[Path] = None,
@@ -38,8 +39,14 @@ class Execution:
         self._log_to_dir = log_to_dir
         self._threads: List[Thread] = []
         self._work_item_queue: LifoQueue[WorkItem] = LifoQueue()
+        token = retrieve_token()
+        env_variables: dict[str, str] = {}
+        if token:
+            env_variables["datallog_x_api_key"] = token["x-api-key"]
+            env_variables["datallog_authorization"] = token["Authorization"]
+            
         self._execution_props = ExecutionProps(
-            file_path=str(Path("/var/task/project") / "apps" / app_name / f"{app_name}.py"),
+            environment_variables=env_variables,
             log_to_dir='/logs' if log_to_dir else None,
         )
 
@@ -61,7 +68,9 @@ class Execution:
         self._socket_path = socket_path
 
         first_work_item = WorkItem(
-            step_index=0,
+            automation_name=automation_name,
+            file_path=str(Path("/project") / "automations" / automation_name / f"{automation_name}.py"),
+            automation_index=0,
             argument=seed,
             sequence=[0],
         )
@@ -80,7 +89,7 @@ class Execution:
             self._worker_id += 1
             return self._worker_id
 
-    def _process_result(self):
+    def _process_result(self) -> None:
         results: List[Any] = []
         with self._results_lock:
             for result in self._results:
@@ -92,7 +101,6 @@ class Execution:
             print(json.dumps(results[0], indent=4))
         else:
             print(json.dumps(results, indent=4))
-        
 
     def _adjust_thread_count(self):
         with self._idle_workers_lock:
@@ -114,7 +122,7 @@ class Execution:
     def _worker_process(self, worker_id: int) -> None:
         try:
             os.system(command='stty sane')
-            container_run_app(
+            container_run_automation(
                 settings=self.__settings,
                 runtime_image=self._runtime_image,
                 env_dir=self._env_dir,

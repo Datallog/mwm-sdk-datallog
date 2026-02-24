@@ -1,5 +1,4 @@
 {
-    "mypy.dmypyExecutable": "${workspaceFolder}/env/bin/dmypy",
     "python.analysis.addHoverSummaries": true,
     "python.analysis.inlayHints.callArgumentNames": "all",
     "python.analysis.inlayHints.functionReturnTypes": true,

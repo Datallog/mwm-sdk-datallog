@@ -1,4 +1,4 @@
-from datallog import core_step, step, selenium_driver
+from datallog import task
 from datetime import datetime
 import re
 from urllib.parse import urljoin
@@ -11,22 +11,21 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 
 """
-This application is an example of how to use the Datallog framework to create a simple data processing pipeline.
+This automation is an example of how to use the Datallog framework to create a simple data processing pipeline.
 
-To run this application, you need to run `datallog run example`.
+To run this automation, you need to run `datallog run example`.
 
 You can specify the initial input through the `seed.json` file or by passing the `--seed` option with a JSON dictionary.
 E.g `datallog run example --seed '{"days": ["2023-01-01", "2022-01-01"]}'`.
 
 It retrieves the Astronomy Picture of the Day (APOD) from NASA's website for a list of specified dates.
-The application consists of three main steps:
+The automation consists of tho main steps:
 1. `generate_urls`: Generates URLs for the APOD pages based on the provided seed data.
-2. `download_pages`: Downloads the HTML content of each APOD page.
-3. `parse_html`: Parses the HTML content to extract key information such as the title,
+3. `fetch_and_parse_page`: Parses the HTML content to extract key information such as the title,
     date, image URL, and alt text of the image.
 """
 
-@core_step(next_step="fetch_and_parse_page")
+@task
 def generate_urls(seed):
     """
     Generates URLs for NASA's Astronomy Picture of the Day (APOD) based on the provided seed data.
@@ -47,18 +46,11 @@ def generate_urls(seed):
         "https://apod.nasa.gov/apod/ap{}.html".format(date_str)
         for date_str in date_strs
     ]
-    return urls
+    return [fetch_and_parse_page(url) for url in urls]
 
 
 
-def a(b = []):
-    b.append(1)
-    return b
 
-a() # [1]
-a()
-
-@step()
 def fetch_and_parse_page(url: str) -> dict:
     selenium_driver: WebDriver = selenium_driver("firefox")
     """

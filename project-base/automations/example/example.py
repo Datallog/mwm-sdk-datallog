@@ -1,10 +1,10 @@
-from datallog import core_step, step
+from datallog import automation
 import requests
 import re
 from datetime import datetime
 
 """
-This application is an example of how to use the Datallog framework to create a simple data processing pipeline.
+This automation is an example of how to use the Datallog framework to create a simple data processing pipeline.
 
 To run this application, you need to run `datallog run example`.
 
@@ -19,7 +19,7 @@ The application consists of three main steps:
     date, image URL, and alt text of the image.
 """
 
-@core_step(next_step="download_pages")
+@automation()
 def generate_urls(seed):
     """
     Generates URLs for NASA's Astronomy Picture of the Day (APOD) based on the provided seed data.
@@ -40,11 +40,10 @@ def generate_urls(seed):
         "https://apod.nasa.gov/apod/ap{}.html".format(date_str)
         for date_str in date_strs
     ]
-    return urls
+    return [parse_html(download_pages(url)) for url in urls]
 
 
-@step(next_step="parse_html")
-def download_pages(url):
+def download_page(url):
     """
     Downloads the HTML content of a given URL.
     Args:
@@ -58,7 +57,6 @@ def download_pages(url):
     return requests.get(url).text
 
 
-@step()
 def parse_html(html: str):
     """
     Parses the HTML of a NASA APOD page to extract key information.

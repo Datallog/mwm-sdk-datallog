@@ -9,30 +9,30 @@ from container import (
     container_install_packages,
     container_check_if_image_exists,
 )
-from errors import InvalidAppError
+from errors import InvalidAutomationError
 from worker_server import WorkerServer
 from spinner import Spinner
 
 from settings import load_settings
 
-def parse_app(app_name: str) -> str:
-    app_name = app_name.strip()
-    if app_name.endswith("/"):
-        app_name = app_name[:-1]
-    if app_name.startswith("./"):
-        app_name = app_name[2:]
-    if app_name.endswith(".py"):
-        app_name = app_name[:-3]
-    if app_name.startswith("apps/"):
-        app_name = app_name[5:]
+def parse_automation(automation_name: str) -> str:
+    automation_name = automation_name.strip()
+    if automation_name.endswith("/"):
+        automation_name = automation_name[:-1]
+    if automation_name.startswith("./"):
+        automation_name = automation_name[2:]
+    if automation_name.endswith(".py"):
+        automation_name = automation_name[:-3]
+    if automation_name.startswith("automations/"):
+        automation_name = automation_name[5:]
 
-    if not app_name:
-        raise InvalidAppError("App name cannot be empty.")
-    app_name_parts = app_name.split("/")
-    if len(app_name_parts) > 1:
-        app_name = app_name_parts[-1]
+    if not automation_name:
+        raise InvalidAutomationError("Automation name cannot be empty.")
+    automation_name_parts = automation_name.split("/")
+    if len(automation_name_parts) > 1:
+        automation_name = automation_name_parts[-1]
 
-    return app_name
+    return automation_name
 
 
 def run(args: Namespace) -> None:
@@ -41,14 +41,14 @@ def run(args: Namespace) -> None:
         settings = load_settings()
         project_path = get_project_base_dir()
 
-        processed_app_name = parse_app(args.app_name)
+        processed_automation_name = parse_automation(args.automation_name)
 
         app_path = (
-            project_path / "apps" / processed_app_name / f"{processed_app_name}.py"
+            project_path / "automations" / processed_automation_name / f"{processed_automation_name}.py"
         )
         if not app_path.exists():
-            raise InvalidAppError(
-                f"Application file '{app_path}' does not exist. Please check the app name."
+            raise InvalidAutomationError(
+                f"Automation file '{app_path}' does not exist. Please check the automation name."
             )
 
         spinner = Spinner("Loading project...")
@@ -94,15 +94,15 @@ def run(args: Namespace) -> None:
             else:
                 seed_file = args.seed_file.strip() if args.seed_file else ""
                 if not seed_file:
-                    seed_file = project_path / "apps" / processed_app_name / "seed.json"
+                    seed_file = project_path / "automations" / processed_automation_name / "seed.json"
                 if not os.path.exists(seed_file):
-                    raise InvalidAppError(
+                    raise InvalidAutomationError(
                         f"Seed file '{seed_file}' does not exist. Please provide a valid seed file."
                     )
                 with open(seed_file, "r") as seed_file:
                     seed_content = json.load(seed_file)
         except json.JSONDecodeError as e:
-            raise InvalidAppError(
+            raise InvalidAutomationError(
                 f"Invalid seed content, please provide a valid JSON: {e}"
             )
         log_to_dir = None
@@ -112,23 +112,23 @@ def run(args: Namespace) -> None:
                 if not log_to_dir.exists():
                     log_to_dir.mkdir(parents=True, exist_ok=True)
                 if not log_to_dir.is_dir():
-                    raise InvalidAppError(f"{log_to_dir} is not a directory.")
+                    raise InvalidAutomationError(f"{log_to_dir} is not a directory.")
                 
             except Exception as e:
-                raise InvalidAppError(f"Error creating log directory: {e}")
+                raise InvalidAutomationError(f"Error creating log directory: {e}")
     
         server = WorkerServer(
             settings=settings,
             runtime_image=runtime,
             project_dir=project_path,
             env_dir=env_path,
-            app_name=processed_app_name,
+            automation_name=processed_automation_name,
             parallelism=args.parallelism,
             seed=seed_content,
             log_to_dir=log_to_dir.absolute() if log_to_dir else None,
         )
         server.serve_forever()
-    except InvalidAppError as e:
+    except InvalidAutomationError as e:
         if spinner:
             spinner.fail(f"Error: {e}")  # type: ignore
         else:

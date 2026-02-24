@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 class GetWorkItem(BaseModel):
     """
     Represents a request sent by a worker process to the container server
-    to ask for a new work item (a specific step to execute).
+    to ask for a new work item (a specific automation to execute).
     """
 
     type: Literal["GET_WORK_ITEM"] = "GET_WORK_ITEM"
@@ -27,10 +27,10 @@ class GetExecutionProps(BaseModel):
     """
     Represents a request sent by a worker process to the container server,
     typically during initialization, to retrieve static properties
-    associated with the overall application execution it will be part of.
+    associated with the overall automation execution it will be part of.
     """
 
-    type: Literal["GET_STEP_EXECUTION_PROPS"] = "GET_STEP_EXECUTION_PROPS"
+    type: Literal["GET_AUTOMATION_EXECUTION_PROPS"] = "GET_AUTOMATION_EXECUTION_PROPS"
     """Identifies the type of message being sent."""
     worker_id: int
     """The worker ID of the worker sending the request."""
@@ -38,24 +38,24 @@ class GetExecutionProps(BaseModel):
 
 class ExecutionProps(BaseModel):
     """
-    Contains the static properties defining a specific application execution.
+    Contains the static properties defining a specific automation execution.
     This data is typically sent by the server to a worker process in response
     to a GetExecutionProps request or upon initial assignment, providing the
-    context needed to run the application's steps.
+    context needed to run the automation's automations.
     """
 
     type: Literal["EXECUTION_PROPS"] = "EXECUTION_PROPS"
     """Identifies the type of message being sent."""
 
-    file_path: str
-    """The absolute or relative path to the main Python file containing the
-       user's application code (steps defined with decorators). The worker
-       needs this to import the code."""
-
     execution_id: UUID = Field(default_factory=uuid4)
-    """The unique identifier for this entire application execution instance.
+    """The unique identifier for this entire automation execution instance.
        All work items and results related to this specific run will share
        this ID."""
+       
+    environment_variables: dict[str, str] = Field(default_factory=dict)
+    """A dictionary of environment variables that should be set for the worker
+       process when executing the automations. This allows passing necessary
+       configuration or secrets to the worker without hardcoding them in the code."""
 
     log_to_dir: Optional[str] = None
     """Optional directory path where the worker can log its output. If provided,
@@ -67,33 +67,41 @@ class ExecutionProps(BaseModel):
 
 class WorkItem(BaseModel):
     """
-    Represents a single unit of work - a specific step execution task - sent
+    Represents a single unit of work - a specific automation execution task - sent
     by the container server to a worker process. It contains all the necessary
-    information for the worker to find and execute the correct step function.
-    Can also be sent *by* the worker to the server to indicate the *next* step
-    to be executed if the current step is not the final one.
+    information for the worker to find and execute the correct automation function.
+    Can also be sent *by* the worker to the server to indicate the *next* automation
+    to be executed if the current automation is not the final one.
     """
 
     type: Literal["WORK_ITEM"] = "WORK_ITEM"
     """Identifies the type of message, indicating this is a task for the worker
        or a request to schedule the next task."""
     work_id: UUID = Field(default_factory=uuid4)
-    """A unique identifier for *this specific* instance of executing a step.
-       If a step branches, each new resulting task gets its own unique work_id."""
-    step_index: int
-    """The zero-based index corresponding to the step function (defined via
+    """A unique identifier for *this specific* instance of executing a automation.
+       If a automation branches, each new resulting task gets its own unique work_id."""
+    automation_name: str
+    """The name of the automation function (defined via decorators in the user's code) that should be executed for this work item. This is used by the worker to identify
+         which function to call."""
+    automation_index: int
+    """The zero-based index corresponding to the automation function (defined via
        decorators in the user's code) that should be executed for this work item."""
     argument: Any
-    """The input data or argument that should be passed to the step function
+    """The input data or argument that should be passed to the automation function
        when it is called by the worker."""
+       
+    file_path: str
+    """The absolute or relative path to the main Python file containing the
+       user's automation code (automation defined with decorators). The worker
+       needs this to import the code."""
     from_work_id: Optional[UUID] = None
     """The work_id of the preceding WorkItem that generated this one. This creates
-       a lineage or execution tree, linking steps together. It's None
-       for the first step of an execution."""
+       a lineage or execution tree, linking automations together. It's None
+       for the first automation of an execution."""
     sequence: List[int] = Field(default_factory=list) # type: ignore
-    """A list of integers representing the sequence of step indices leading to
+    """A list of integers representing the sequence of automation indices leading to
          this WorkItem. This helps in tracking the execution path taken to reach
-         this step, useful for debugging and understanding the flow of execution.""" 
+         this automation, useful for debugging and understanding the flow of execution.""" 
          
 
 
@@ -102,14 +110,14 @@ class WorkerPublishResult(BaseModel):
     Represents the final result message sent by a worker process back to the
     container server after successfully completing a WorkItem.
 
-    This message is sent *only* when the completed step is the *final step*
-    in its specific execution path (i.e., no subsequent step is defined by
+    This message is sent *only* when the completed automation is the *final automation*
+    in its specific execution path (i.e., no subsequent automation is defined by
     the application's decorators). It signals the end of this execution
     branch and provides its final output value.
 
-    If a subsequent step *is* defined for the completed WorkItem, the worker
-    will instead send a message (like a 'step' type message, potentially formatted
-    similarly to a WorkItem) to initiate that next step, rather than sending
+    If a subsequent automation *is* defined for the completed WorkItem, the worker
+    will instead send a message (like a 'automation' type message, potentially formatted
+    similarly to a WorkItem) to initiate that next automation, rather than sending
     this final result message.
     """
 
@@ -120,7 +128,7 @@ class WorkerPublishResult(BaseModel):
     """The unique identifier of the specific WorkItem that completed and produced
        this final result."""
     result: Any
-    """The actual final data returned by the last step function in this execution path."""
+    """The actual final data returned by the last automation function in this execution path."""
 
 
 class WorkerError(BaseModel):

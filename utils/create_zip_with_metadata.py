@@ -3,7 +3,7 @@ from typing import List
 import zipfile
 import json
 from pathlib import Path
-from errors import EmptyProjectDirError, UnableToBundleAppError
+from errors import EmptyProjectDirError, UnableToBundleAutomationError
 from container import (
     container_build,
     container_check_if_image_exists,
@@ -14,6 +14,7 @@ from parser_project_ini import parse_project_ini
 from get_project_env import get_project_env
 from logger import Logger
 from settings import load_settings
+
 logger = Logger(__name__)
 
 def create_zip_with_metadata(project_path: Path, output_zip_filename: Path) -> None:
@@ -102,12 +103,12 @@ def create_zip_with_metadata(project_path: Path, output_zip_filename: Path) -> N
         )
 
     except FileNotFoundError as e:
-        raise UnableToBundleAppError(
+        raise UnableToBundleAutomationError(
             f"One of the files was not found. This can happen if files are moved/deleted during the operation."
         ) from e
     except PermissionError as e:
-        raise UnableToBundleAppError(
+        raise UnableToBundleAutomationError(
             f"Permission denied. Check if you have write permissions for '{output_zip_filename}' or read permissions for files in '{project_path}'."
         ) from e
     except Exception as e:
-        raise UnableToBundleAppError(f"An unexpected error occurred: {e}") from e
+        raise UnableToBundleAutomationError(f"An unexpected error occurred: {e}") from e

@@ -45,18 +45,18 @@ parser_project.add_argument(
     help="Name of the deployment",
 )
 
-# --- 'create-app' command ---
-parser_create_app = subparsers.add_parser(
-    "create-app",
-    help="Create a new application in the current deployment",
-    usage="""datallog create-app [options] <app_name>""",
+# --- 'create-automation' command ---
+parser_create_automation = subparsers.add_parser(
+    "create-automation",
+    help="Create a new automation in the current project",
+    usage="""datallog create-automation [options] <automation>""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
-parser_create_app.add_argument(
-    "app_name",
-    metavar="<app_name>",
+parser_create_automation.add_argument(
+    "automation_name",
+    metavar="<automation_name>",
     type=str,
-    help="Name of the application to create",
+    help="Name of the automation to create",
 )
 
 
@@ -110,15 +110,15 @@ uninstall_package_group.add_argument(
 # --- 'run' command ---
 parser_run = subparsers.add_parser(
     "run",
-    help="Run a script in the current deployment",
-    usage="""datallog run [options] <app_name> [--seed <seed>] [--seed-file <seed_file>] [--parallelism <n>] [--log-to-dir <dir>]""",
+    help="Run a script in the current project",
+    usage="""datallog run [options] <automation_name> [--seed <seed>] [--seed-file <seed_file>] [--parallelism <n>] [--log-to-dir <dir>]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
 
 parser_run.add_argument(
-    "app_name",
-    metavar="<app_name>",
-    help="The name of the application to run",
+    "automation_name",
+    metavar="<automation_name>",
+    help="The name of the automation to run",
 )
 seed_group = parser_run.add_mutually_exclusive_group()
 seed_group.add_argument(
@@ -126,14 +126,14 @@ seed_group.add_argument(
     "--seed",
     metavar="<seed>",
     default=None,
-    help="Optional seed value for the application",
+    help="Optional seed value for the automation",
 )
 seed_group.add_argument(
     "-f",
     "--seed-file",
     metavar="<seed_file>",
     default=None,
-    help="Optional file containing seed data for the application",
+    help="Optional file containing seed data for the automation",
 )
 
 
@@ -153,13 +153,13 @@ parser_run.add_argument(
     metavar="<log_to_dir>",
     type=str,
     default=None,
-    help="Directory to log the output of the application",
+    help="Directory to log the output of the automation",
 )
 
 # --- 'push' command ---
 parser_push = subparsers.add_parser(
     "push",
-    help="Push the current deployment to the Datallog service",
+    help="Push the current project to the Datallog service",
     usage="""datallog push [options]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
@@ -227,9 +227,9 @@ if __name__ == "__main__":
         elif args.command == "uninstall":
             from subcommands.uninstall import uninstall
             uninstall(args)
-        elif args.command == "create-app":
-            from subcommands.create_app import create_app
-            create_app(args)
+        elif args.command == "create-automation" or args.command == "create-auto":
+            from subcommands.create_automation import create_automation
+            create_automation(args)
         elif args.command == "purge":
             from subcommands.purge import purge
             purge(args)

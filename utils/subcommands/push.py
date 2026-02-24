@@ -167,7 +167,7 @@ def push(args: Namespace) -> None:
         logger.info(response_hash_json)
 
         send_requirements = True
-        send_apps = True
+        send_automations = True
 
         requirements_build_id = None
         applications_build_id = None
@@ -185,7 +185,7 @@ def push(args: Namespace) -> None:
             app_hash_json.get("exists", False)
             and not app_hash_json.get("status", "NOT_FOUND") == "FAILED"
         ):
-            send_apps = False
+            send_automations = False
             applications_build_id = response_hash_json["app_build"]["id"]
 
         if send_requirements:
@@ -270,7 +270,7 @@ def push(args: Namespace) -> None:
                 f"{datallog_url}/api/sdk/requirements-build-status/{requirements_build_id}",
                 headers=token,
             )
-            requirements_build_status_json: Dict[str, str] = (
+            requirements_build_status_json = (
                 response_requirements_build_status.json()
             )
             logger.info(
@@ -291,7 +291,7 @@ def push(args: Namespace) -> None:
             if send_requirements:
                 spinner.succeed("Requirements image build finished")  # type: ignore
 
-        if send_apps:
+        if send_automations:
             spinner.start(text="Generating applications bundle")  # type: ignore
 
             with NamedTemporaryFile() as temp_file:
@@ -302,19 +302,19 @@ def push(args: Namespace) -> None:
                 spinner.succeed("Applications bundle created successfully")  # type: ignore
 
                 temp_file.seek(0)
-                response_presinged_apps = requests.get(
+                response_presinged_automations = requests.get(
                     f"{datallog_url}/api/sdk/get-deploy-applications-presigned-url",
                     params={
                         "deploy_name": name,
                     },
                     headers=token,
                 )
-                if not response_presinged_apps.ok:
+                if not response_presinged_automations.ok:
                     raise Exception(
-                        f"Failed to get presigned URL for applications: {response_presinged_apps.text}"
+                        f"Failed to get presigned URL for applications: {response_presinged_automations.text}"
                     )
 
-                presigned_url = response_presinged_apps.json()
+                presigned_url = response_presinged_automations.json()
                 spinner.start(text="Uploading applications")  # type: ignore
                 response = requests.put(
                     presigned_url,
@@ -339,7 +339,7 @@ def push(args: Namespace) -> None:
                 )
             )
             logger.info("Waiting for applications build to finish...")
-            response_notify_apps_upload = requests.post(
+            response_notify_automations_upload = requests.post(
                 f"{datallog_url}/api/sdk/confirm-applications-upload",
                 json={
                     "deploy_name": name,
@@ -350,16 +350,16 @@ def push(args: Namespace) -> None:
                 headers=token,
             )
 
-            logger.info(response_notify_apps_upload.text)
-            logger.info(str(response_notify_apps_upload.status_code))
+            logger.info(response_notify_automations_upload.text)
+            logger.info(str(response_notify_automations_upload.status_code))
             spinner.succeed(message="Applications uploaded successfully")  # type: ignore
 
-            if response_notify_apps_upload.status_code != 201:
+            if response_notify_automations_upload.status_code != 201:
                 raise Exception(
-                    f"Failed to confirm applications upload: {response_notify_apps_upload.text}"
+                    f"Failed to confirm applications upload: {response_notify_automations_upload.text}"
                 )
             logger.info("Applications upload confirmed successfully.")
-            applications_build_id = response_notify_apps_upload.json().get(
+            applications_build_id = response_notify_automations_upload.json().get(
                 "applications_build_id"
             )
         logger.info(f"Applications build ID: {applications_build_id}")
@@ -367,19 +367,19 @@ def push(args: Namespace) -> None:
         spinner.start(text="Waiting for applications image build to finish (this may take a few minutes)")  # type: ignore
 
         while status == "BUILDING":
-            response_apps_build_status = requests.get(
+            response_automations_build_status = requests.get(
                 f"{datallog_url}/api/sdk/applications-build-status/{applications_build_id}",
                 headers=token,
             )
-            apps_build_status_json = response_apps_build_status.json()
-            logger.info(f"Applications build status response: {apps_build_status_json}")
-            status = apps_build_status_json.get("status", "BUILDING")
+            automations_build_status_json = response_automations_build_status.json()
+            logger.info(f"Applications build status response: {automations_build_status_json}")
+            status = automations_build_status_json.get("status", "BUILDING")
             logger.info(f"Applications build status: {status}")
             if status == "BUILDING":
                 sleep(5)
-        if send_apps:
+        if send_automations:
             spinner.succeed("Applications image build finished")
-        if not send_requirements and not send_apps:
+        if not send_requirements and not send_automations:
             # Caso: O script rodou, checou hashes e viu que não precisava enviar nada
             spinner.succeed("Project is already up to date", boxed=True) # type: ignore
         else:

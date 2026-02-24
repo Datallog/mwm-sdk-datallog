@@ -342,7 +342,7 @@ def container_generate_hash(
         settings=settings,
         runtime_image=runtime_image,
         volumes=[
-            (project_dir, Path("/var/task/project")),
+            (project_dir, Path("/project")),
             (env_dir, Path("/env")),
         ],
         command="/gen_hash.sh",
@@ -448,7 +448,7 @@ def container_check_if_image_exists(
     return "Yes"
 
 
-def container_run_app(
+def container_run_automation(
     settings: Settings,
     runtime_image: str,
     env_dir: Path,
@@ -468,7 +468,7 @@ def container_run_app(
     """
     volumes = [
         (env_dir, Path("/env")),
-        (project_dir, Path("/var/task/project")),
+        (project_dir, Path("/project")),
         (Path(unix_socket_path), Path("/tmp/datallog_worker.sock")),
     ]
     
@@ -478,7 +478,7 @@ def container_run_app(
     args = ["-m", "datallog.utils.worker", str(worker_id)]
     from token_manager import retrieve_token
     env_tokens = retrieve_token()
-    docker_args: List[str] = ["-w", "/var/task/project"]
+    docker_args: List[str] = ["-w", "/project"]
     
     if env_tokens is not None:
         authorization_token = env_tokens['Authorization']
@@ -511,11 +511,11 @@ def container_generete_build(
                 runtime_image=runtime_image,
                 command="/env/bin/python",
                 volumes=[
-                    (project_dir, Path("/var/task/project")),
+                    (project_dir, Path("/project")),
                     (env_dir, Path("/env")),
                     (temp_file_path, Path("/build.json")),
                 ],
-                docker_args=["-w", "/var/task/project"],
+                docker_args=["-w", "/project"],
                 args=["-m", "datallog.utils.generate_build_file"],
             )
             with open(temp_file_path, "r") as f:

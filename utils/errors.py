@@ -4,8 +4,8 @@ class DatallogError(Exception):
         super().__init__(message)
         self.message = message
 
-class InvalidAppError(DatallogError):
-    """Custom exception for invalid app configurations."""
+class InvalidAutomationError(DatallogError):
+    """Custom exception for invalid automation configurations."""
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
@@ -15,9 +15,7 @@ class EmptyProjectDirError(DatallogError):
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
-        
 
-        
 class CannotConnectToDockerDaemonError(DatallogError):
     """Custom exception for issues connecting to the Docker daemon."""
     def __init__(self, message: str):
@@ -70,8 +68,8 @@ class UnableToBuildImageError(DatallogError):
         super().__init__(message)
         self.message = message
         
-class UnableToBundleAppError(DatallogError):
-    """Custom exception for errors when bundling applications."""
+class UnableToBundleAutomationError(DatallogError):
+    """Custom exception for errors when bundling automations."""
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
@@ -108,6 +106,12 @@ class UnableToCreateProjectError(DatallogError):
         
 class InvalidSettingsError(DatallogError):
     """Custom exception for errors related to invalid settings."""
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+        
+class InvalidProjectError(DatallogError):
+    """Custom exception for errors related to invalid project configurations."""
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message

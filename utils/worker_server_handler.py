@@ -64,7 +64,7 @@ class ExecutionWorkerHandler(StreamRequestHandler):
                     self._send_message_to_worker(NoMoreWorkItems())
                     break
 
-            elif worker_message.type == "GET_STEP_EXECUTION_PROPS":
+            elif worker_message.type == "GET_AUTOMATION_EXECUTION_PROPS":
                 self._send_message_to_worker(self.server.execution.execution_props)
             elif worker_message.type == "WORK_ITEM":
                 self.server.execution.add_work_item(work_item=worker_message)
