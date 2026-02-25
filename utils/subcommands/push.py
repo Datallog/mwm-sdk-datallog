@@ -303,7 +303,7 @@ def push(args: Namespace) -> None:
 
                 temp_file.seek(0)
                 response_presinged_automations = requests.get(
-                    f"{datallog_url}/api/sdk/get-deploy-applications-presigned-url",
+                    f"{datallog_url}/api/sdk/get-deploy-automation-presigned-url",
                     params={
                         "deploy_name": name,
                     },
@@ -340,7 +340,7 @@ def push(args: Namespace) -> None:
             )
             logger.info("Waiting for applications build to finish...")
             response_notify_automations_upload = requests.post(
-                f"{datallog_url}/api/sdk/confirm-applications-upload",
+                f"{datallog_url}/api/sdk/confirm-automation-upload",
                 json={
                     "deploy_name": name,
                     "url_s3": presigned_url,
@@ -368,7 +368,7 @@ def push(args: Namespace) -> None:
 
         while status == "BUILDING":
             response_automations_build_status = requests.get(
-                f"{datallog_url}/api/sdk/applications-build-status/{applications_build_id}",
+                f"{datallog_url}/api/sdk/automation-build-status/{applications_build_id}",
                 headers=token,
             )
             automations_build_status_json = response_automations_build_status.json()
