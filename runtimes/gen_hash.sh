@@ -3,7 +3,7 @@
 source /env/bin/activate || exit 1
 
 REQUIREMENTS_HASH=$(pip freeze --local | sort | md5sum | awk '{ print $1}')
-APP_HASH=$(find /project ! -path '**.git**' ! -path '/project/env' ! -path '*__pycache__*' -type f -print0 | sort -z | xargs -0 md5sum | md5sum | awk '{ print $1}')
+APP_HASH=$(find /project -path '*/.git*' -prune -o -path '/project/env*' -prune -o -path '*__pycache__*' -prune -o -type f -print0 | sort -z | xargs -0r md5sum | md5sum | awk '{ print $1}')
 echo
 echo
 echo DATALLOG_REQUIREMENTS_HASH=$REQUIREMENTS_HASH
