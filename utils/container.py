@@ -475,7 +475,7 @@ def container_run_automation(
     if log_to_dir:
         volumes.append((log_to_dir, Path("/logs")))
         
-    args = ["-m", "datallog.utils.worker", str(worker_id)]
+    args = ["-u", "-m", "datallog.utils.worker", str(worker_id)]
     from token_manager import retrieve_token
     env_tokens = retrieve_token()
     docker_args: List[str] = ["-w", "/project"]

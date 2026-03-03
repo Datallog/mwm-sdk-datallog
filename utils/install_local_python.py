@@ -161,7 +161,7 @@ def create_local_env(project_dir: Path, python_executable: Path) -> Path:
         logger.info(f"Creating virtual environment at {venv_path}...")
         try:
             subprocess.run(
-                [python_executable, "-m", "venv", str(venv_path)],
+                [python_executable, "-u", "-m", "venv", str(venv_path)],
                 check=True,
             )
         except subprocess.CalledProcessError as e:
@@ -196,7 +196,7 @@ def install_local_packages_from_requirements(
 
     try:
         installed_requiments_process = subprocess.run(
-            [python_executable, "-m", "pip", "freeze", "--local"],
+            [python_executable, "-u", "-m", "pip", "freeze", "--local"],
             check=True,
             cwd=project_dir,
             capture_output=True,
@@ -224,7 +224,7 @@ def install_local_packages_from_requirements(
     try:
 
         subprocess.run(
-            [python_executable, "-m", "pip", "install", "-r", str(requirements_file)],
+            [python_executable, "-u", "-m", "pip", "install", "-r", str(requirements_file)],
             check=True,
             cwd=project_dir,
         )
