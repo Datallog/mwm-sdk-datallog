@@ -17,6 +17,8 @@ from schema import Settings
 from get_selenium_path import get_selenium_path
 import re
 import pytz
+from token_manager import retrieve_token
+
 
 logger = Logger(__name__)
 
@@ -476,7 +478,6 @@ def container_run_automation(
         volumes.append((log_to_dir, Path("/logs")))
         
     args = ["-u", "-m", "datallog.utils.worker", str(worker_id)]
-    from token_manager import retrieve_token
     env_tokens = retrieve_token()
     docker_args: List[str] = ["-w", "/project"]
     
