@@ -42,16 +42,21 @@ class StreamTee(threading.Thread):
 
     def run(self):
         """The main logic of the thread."""
-        # Read from the source stream line by line until it's closed
-        for line in self.source_stream:
+        # Use readline() explicitly to get lines as soon as they arrive (no read-ahead buffering)
+        while True:
+            line = self.source_stream.readline()
+            if not line:
+                break
             os.system(command='stty sane')
             if self.print_output:
                 self.dest_stream.write(line)
+                self.dest_stream.flush()
             self.capture_list.append(line)  # Capture the line
 
 
 def container_exec(
-    args: List[str], cwd: Optional[Path] = None, print_output: bool = False
+    args: List[str], cwd: Optional[Path] = None, print_output: bool = False,
+    print_stderr: Optional[bool] = None,
 ) -> Tuple[subprocess.Popen[str], str, str]:
     try:
 
@@ -81,9 +86,11 @@ def container_exec(
                 stdout="",
                 stderr="Failed to start process: stdout or stderr is None.",
             )
-        
+
+        # Allow independent control of stdout/stderr printing
+        _print_stderr = print_stderr if print_stderr is not None else print_output
         stdout_tee = StreamTee(process.stdout, sys.stdout, stdout_capture, print_output)
-        stderr_tee = StreamTee(process.stderr, sys.stderr, stderr_capture, print_output)
+        stderr_tee = StreamTee(process.stderr, sys.stderr, stderr_capture, _print_stderr)
 
         stdout_tee.start()
         stderr_tee.start()
@@ -131,6 +138,7 @@ def container_run(
     args: List[str] = [],
     docker_args: List[str] = [],
     print_output: bool = False,
+    print_stderr: Optional[bool] = None,
 ) -> Tuple[subprocess.Popen[str], str, str]:
     """
     Execute a command in the container.
@@ -172,7 +180,7 @@ def container_run(
         "run",
         *volumes_args_list,
         "--rm",
-        "-it",
+        "-i",
         *permissions_args,
         "--platform",
         "linux/amd64",
@@ -181,7 +189,7 @@ def container_run(
         command,
         *args,
     ]
-    return container_exec(container_command, print_output=print_output)
+    return container_exec(container_command, print_output=print_output, print_stderr=print_stderr)
 
 
 def container_build(settings: Settings, image_name: str) -> Tuple[subprocess.Popen[str], str, str]:
@@ -497,6 +505,7 @@ def container_run_automation(
         args=args,
         docker_args=docker_args,
         print_output=True,
+        print_stderr=False,
     )
 
 
