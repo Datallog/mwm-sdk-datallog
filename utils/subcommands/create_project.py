@@ -132,7 +132,7 @@ def create_project(args: Namespace) -> None:
             if runtime == "Custom (Dockerfile)":
                 runtime = "custom"
             
-            regions = fetch_regions(f"{datallog_url}/platform-api/list-regions")
+            regions = fetch_regions("https://mwm.datallog.com/platform-api/list-regions")
             
             if args.region:
                 if args.region in regions:
