@@ -16,6 +16,7 @@ from errors import (
 )
 
 logger = Logger(__name__)
+UV_BIN_DIR = Path.home() / ".local" / "bin"
 
 
 def run_command(
@@ -51,81 +52,64 @@ def is_command_available(command: str) -> bool:
     return shutil.which(command) is not None
 
 
+def get_uv_command() -> str:
+    """
+    Resolves the uv executable, including the default user install location.
+    """
+    uv_path = shutil.which("uv")
+    if uv_path:
+        return uv_path
+
+    candidate = UV_BIN_DIR / "uv"
+    if candidate.exists():
+        return str(candidate)
+
+    raise UnableToFindPythonExecutableError(
+        "Failed to find 'uv' command. Please ensure uv is installed and available in your PATH."
+    )
+
+
 def get_python_executable(python_version: str) -> Path:
     """
-    Finds and sets a suitable Python executable based on pyenv.
-    This function will install pyenv and the required Python version if they are not found.
+    Finds and installs a suitable Python executable using uv.
     """
-
-    if not is_command_available("pyenv"):
-        raise UnableToFindPythonExecutableError(
-            f"Failed to find 'pyenv' command. Please ensure pyenv is installed and available in your PATH."
-        )
+    python_version_mapping: dict[str, str] = {
+        "3.10-selenium": "3.10",
+        "3.11-selenium": "3.11",
+        "3.12-selenium": "3.12",
+    }
+    python_version = python_version_mapping.get(python_version, python_version)
+    uv_command = get_uv_command()
 
     logger.info(
         f"Searching for the latest patch version of Python {python_version}..."
     )
+    _, stderr, retcode = run_command([uv_command, "python", "install", python_version])
+    if retcode != 0:
+        logger.error(f"Failed to install Python {python_version}. Error: {stderr}")
+        raise UnableToFindPythonExecutableError(
+            f"Failed to install Python {python_version}. Error: {stderr}"
+        )
 
-    # Using shell for grep to simplify the command
-    list_cmd = (
-        f"pyenv install --list | grep -E '^\\s*{python_version}\\.[0-9]+$' | tail -n 1"
+    logger.info("Resolving path for Python executable alias ...")
+    found_python_path_raw, stderr, retcode = run_command(
+        [uv_command, "python", "find", python_version]
     )
-
-    latest_version, _, retcode = run_command(list_cmd, shell=True)
-
-    if retcode != 0 or not latest_version:
+    if retcode != 0 or not found_python_path_raw:
         logger.error(
-            f"Could not find any installable version for Python {python_version}"
+            f"Failed to resolve Python executable path for version '{python_version}'. Error: {stderr}"
         )
         raise UnableToFindPythonExecutableError(
-            f"Failed to find any installable version for Python {python_version}."
+            f"Failed to resolve Python executable path for version '{python_version}'. Error: {stderr}"
         )
 
-    logger.info(f"Latest available version is {latest_version}.")
-
-    # Check if this version is already installed
-    installed_versions, _, _ = run_command(["pyenv", "versions", "--bare"])
-    if installed_versions and latest_version not in installed_versions.split("\n"):
-        logger.info(
-            f"Python {latest_version} is not installed. Installing now (this may take a while)..."
-        )
-        _, stderr, retcode = run_command(["pyenv", "install", latest_version])
-        if retcode != 0:
-            logger.error(f"Failed to install Python {latest_version}. Error: {stderr}")
-            raise UnableToFindPythonExecutableError(
-                f"Failed to install Python {latest_version}. Error: {stderr}"
-            )
-
-        logger.info(f"Successfully installed Python {latest_version}.")
-
-    # 5. Get the executable path from pyenv
-    logger.info(f"Resolving path for Python executable alias ...")
-
-    pyenv_root_path = Path(os.getenv("PYENV_ROOT", str(Path.home() / ".pyenv")))
-    if not pyenv_root_path.exists():
-        logger.error(
-            f"PYENV_ROOT path '{pyenv_root_path}' does not exist. Please ensure pyenv is installed correctly."
-        )
-        raise UnableToFindPythonExecutableError(
-            f"PYENV_ROOT path '{pyenv_root_path}' does not exist."
-        )
-
-    found_python_path = pyenv_root_path / "versions" / latest_version / "bin" / "python"
-
+    found_python_path = Path(found_python_path_raw.splitlines()[0].strip())
     if not found_python_path.exists():
         logger.error(
             f"Could not find Python executable at '{found_python_path}'. Please ensure the version is installed correctly."
         )
         raise UnableToFindPythonExecutableError(
             f"Failed to find Python executable at '{found_python_path}'."
-        )
-
-    if retcode != 0:
-        logger.error(
-            f"Failed to resolve Python executable path for version '{latest_version}'."
-        )
-        raise UnableToFindPythonExecutableError(
-            f"Failed to resolve Python executable path for version '{latest_version}'."
         )
 
     if not os.access(found_python_path, os.X_OK):
@@ -153,9 +137,12 @@ def create_local_env(project_dir: Path, python_executable: Path) -> Path:
     if not venv_path.exists():
         logger.info(f"Creating virtual environment at {venv_path}...")
         try:
+            uv_command = get_uv_command()
             subprocess.run(
-                [python_executable, "-u", "-m", "venv", str(venv_path)],
+                [uv_command, "venv", "--python", str(python_executable), str(venv_path)],
                 check=True,
+                capture_output=True,
+                text=True,
             )
         except subprocess.CalledProcessError as e:
             logger.error(
@@ -188,8 +175,9 @@ def uninstall_local_packages_from_requirements(
         requirements = set(f.read().strip().splitlines())
 
     try:
+        uv_command = get_uv_command()
         installed_requiments_process = subprocess.run(
-            [python_executable, "-u", "-m", "pip", "freeze", "--local"],
+            [uv_command, "pip", "freeze", "--python", str(python_executable)],
             check=True,
             cwd=project_dir,
             capture_output=True,
@@ -208,18 +196,28 @@ def uninstall_local_packages_from_requirements(
             f"Failed to check installed packages in {project_dir}. Error: {e.stderr}"
         )
 
-    if requirements.issubset(installed_requiments_set):
+    if not requirements.intersection(installed_requiments_set):
         logger.info(
-            f"All required packages from {requirements_file} are already installed in {project_dir}."
+            f"No packages from {requirements_file} are installed in {project_dir}."
         )
         return
 
     try:
-
         subprocess.run(
-            [python_executable, "-u", "-m", "pip", "uninstall", "-y", "-r", str(requirements_file)],
+            [
+                uv_command,
+                "pip",
+                "uninstall",
+                "--python",
+                str(python_executable),
+                "-y",
+                "-r",
+                str(requirements_file),
+            ],
             check=True,
             cwd=project_dir,
+            capture_output=True,
+            text=True,
         )
         logger.info("Packages uninstalled successfully.")
 
@@ -245,10 +243,14 @@ def uninstall_local_python_packages(
     logger.info(f"Uninstalling packages: {', '.join(packages)}...")
 
     try:
+        uv_command = get_uv_command()
         subprocess.run(
-            [str(python_executable), "-u", "-m", "pip", "uninstall", "-y"] + packages,
+            [uv_command, "pip", "uninstall", "--python", str(python_executable), "-y"]
+            + packages,
             check=True,
             cwd=project_dir,
+            capture_output=True,
+            text=True,
         )
         logger.info("Packages uninstalled successfully.")
 

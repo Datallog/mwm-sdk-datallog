@@ -9,84 +9,26 @@ declare DATTALLOG_PYTHON_EXECUTABLE=""
 set_python_executable() {
     found_python_path=""
 
+    export PATH="$HOME/.local/bin:$PATH"
 
-    if [ ! -n "$PYENV_ROOT" ]; then
-        if [ -d "$HOME/.pyenv" ]; then
-            export PYENV_ROOT="$HOME/.pyenv"
-            export PATH="$PYENV_ROOT/bin:$PATH"
-            eval "$(pyenv init - bash)"
-            log_debug "PYENV_ROOT was not set, but found .pyenv in home directory
-            and set it to '$PYENV_ROOT'."
-        fi
-    fi
-
-    if [ -z "$PYENV_ROOT" ]; then
-        PYENV_ROOT="$HOME/.pyenv"
-    fi
-
-    if ! command -v pyenv &>/dev/null; then
-        if ! [ -d "$PYENV_ROOT" ]; then
-            export PYENV_ROOT="$HOME/.pyenv"
-        fi
-
-        if ! [ -d "$PYENV_ROOT" ]; then
-            echo "Pyenv is not installed."
-            exit 1
-        fi
-
-        export PATH="$PYENV_ROOT/bin:$PATH"
-        eval "$(pyenv init - bash)"
-    fi
-
-    if ! command -v pyenv &>/dev/null; then
-        log_error "pyenv command not found. Please ensure pyenv is installed and available in your PATH."
+    if ! command -v uv &>/dev/null; then
+        log_error "uv command not found. Please ensure uv is installed and available in your PATH."
         return 1
     fi
 
-    # check if pyenv update plugin is available
-    pyenv_update_path=$(pyenv root)/plugins/pyenv-update
-    if [ -d "$pyenv_update_path" ]; then
-        log_debug "pyenv-update plugin is already installed."
-    else
-        log_debug "Installing pyenv-update plugin..."
-        git clone https://github.com/pyenv/pyenv-update.git $(pyenv root)/plugins/pyenv-update
-        if [ $? -ne 0 ]; then
-            log_error "Failed to install pyenv-update plugin."
-            return 1
-        fi
-    fi
-
-    pyenv update
-
-    latest_python_minor_version=$(pyenv install --list | grep -E "^\s*${PYENV_TARGET_MAJOR_MINOR}\.[0-9]+$" | tail -n 1 | xargs)
-
-    is_target_version_installed_by_pyenv=false
-    if pyenv versions --bare --skip-aliases | grep -qE "^${latest_python_minor_version//./\\.}$"; then
-        is_target_version_installed_by_pyenv=true
-    fi
-
-    if [ "$is_target_version_installed_by_pyenv" = false ]; then
-        if pyenv install -s "${latest_python_minor_version}"; then
-            is_target_version_installed_by_pyenv=true # Mark as installed
-        fi
-    fi
-
-    # If $PYENV_TARGET_MAJOR_MINOR is now (or was already) installed by pyenv, try to use its command alias
-    if [ "$is_target_version_installed_by_pyenv" = false ]; then
-        log_error "Failed to install Python $PYENV_TARGET_MAJOR_MINOR using pyenv."
+    if ! uv python install "${UV_TARGET_MAJOR_MINOR}" >/dev/null; then
+        log_error "Failed to install Python ${UV_TARGET_MAJOR_MINOR} using uv."
         return 1
     fi
-    
 
-    found_python_path="$(pyenv root)/versions/${latest_python_minor_version}/bin/${PYENV_TARGET_COMMAND_ALIAS}"
+    found_python_path=$(uv python find "${UV_TARGET_MAJOR_MINOR}" 2>/dev/null | head -n 1 | xargs)
     if [ ! -x "$found_python_path" ]; then
         log_error "The expected Python executable '$found_python_path' does not exist or is not executable."
         return 1
     fi
 
-
     if [ -z "$found_python_path" ]; then
-        log_error "Checked for pyenv $PYENV_TARGET_MAJOR_MINOR"
+        log_error "Checked for uv-managed Python ${UV_TARGET_MAJOR_MINOR}"
         return 1
     fi
 

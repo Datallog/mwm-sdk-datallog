@@ -1,14 +1,21 @@
 FROM docker.io/library/python:3.9-alpine
+ENV PATH="/usr/local/bin:${PATH}"
 
 # install bash and common dependencies for package installation
 RUN apk add --no-cache \
     bash \
     build-base \
     ca-certificates \
+    coreutils \
+    curl \
+    findutils \
+    gawk \
     git \
     libffi-dev \
     openssl-dev \
     python3-dev
+
+RUN env UV_INSTALL_DIR=/usr/local/bin sh -c "$(curl -LsSf https://astral.sh/uv/install.sh)"
 
 COPY install_packages.sh /install_packages.sh
 RUN chmod +x /install_packages.sh

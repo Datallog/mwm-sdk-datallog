@@ -25,7 +25,7 @@ function create_env() {
     
     log_debug "Creating virtual environment at $env_path using $DATTALLOG_PYTHON_EXECUTABLE"
     
-    if ! "$DATTALLOG_PYTHON_EXECUTABLE" -m venv "$env_path"; then
+    if ! uv venv --python "$DATTALLOG_PYTHON_EXECUTABLE" "$env_path"; then
         log_error "Failed to create virtual environment." >&2
         exit 1
     fi
@@ -33,7 +33,7 @@ function create_env() {
     source $env_path/bin/activate
     cd ..
 
-    if ! pip install -r requirements.txt; then
+    if ! uv pip install --python "$env_path/bin/python" -r requirements.txt; then
         log_error "Failed to install required packages." >&2
         exit 1
     fi

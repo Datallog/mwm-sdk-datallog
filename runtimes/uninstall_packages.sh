@@ -1,25 +1,33 @@
 #!/bin/bash
 
-function reset {
-    rm -rf /env/*
-    rm -rf /env/.*
+set -e
 
-    python3 -m venv /env || exit 1
-    source /env/bin/activate || exit 1
-    pip install -r /requirements.txt || exit 1
-    pip freeze --local >/requirements.txt || exit 1
+UV_BIN="${UV_BIN:-/usr/local/bin/uv}"
+if command -v uv >/dev/null 2>&1; then
+    UV_BIN="$(command -v uv)"
+fi
+
+PYTHON_BIN="/env/bin/python"
+
+function ensure_env {
+    if [ ! -x "$PYTHON_BIN" ]; then
+        "$UV_BIN" venv --python python3 /env || exit 1
+    fi
+}
+
+function reset {
+    find /env -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+    "$UV_BIN" venv --python python3 /env || exit 1
+    "$UV_BIN" pip install --python "$PYTHON_BIN" -r /requirements.txt || exit 1
+    "$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort >/requirements.txt || exit 1
     exit 0
 }
 
 cd /env || exit 1
-if [ ! -d "bin" ]; then
-    python3 -m ensurepip || exit 1
-    python3 -m venv . || exit 1
-fi
+ensure_env
 
-source /env/bin/activate || reset
-
-current_packages=$(pip freeze | sort | tr '\n' ' ')
+current_packages=$("$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort | tr '\n' ' ')
 requirements=$(cat /requirements.txt | sort | tr '\n' ' ')
 
 if [ "$current_packages" != "$requirements" ]; then
@@ -27,14 +35,14 @@ if [ "$current_packages" != "$requirements" ]; then
 fi
 
 if [ "$1" == "packages" ]; then
-    pip uninstall -y "${@:2}"
+    "$UV_BIN" pip uninstall --python "$PYTHON_BIN" -y "${@:2}" || exit 1
 fi
 
 if [ "$1" == "requirements" ]; then
-    pip uninstall -y -r /new_requirements.txt
+    "$UV_BIN" pip uninstall --python "$PYTHON_BIN" -y -r /new_requirements.txt || exit 1
 fi
 
-pip install --upgrade datallog
-pip freeze --local > /requirements.txt
+"$UV_BIN" pip install --python "$PYTHON_BIN" --upgrade datallog || exit 1
+"$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort > /requirements.txt || exit 1
 
 exit 0

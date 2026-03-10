@@ -17,8 +17,6 @@ set -e
 
 declare DATALLOG_INSTALL_CURL=""
 declare DATALLOG_INSTALL_GIT=""
-declare DATALLOG_INSTALL_PYENV_DEPS=""
-declare DATALLOG_INSTALL_PYENV=""
 declare DATALLOG_START_DOCKER_SERVICE=""
 declare DATALLOG_ENABLE_DOCKER_SERVICE=""
 declare DATALLOG_ADD_USER_TO_DOCKER_GROUP=""
@@ -263,7 +261,7 @@ install_deps_debian() {
 ##########################
 
 rpm_ostree_install_deps() {
-    echo "Checking and installing prerequisite packages for pyenv..."
+    echo "Checking and installing prerequisite packages..."
     package_list="curl git gcc podman xhost make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils"
     package_to_install=""
     
@@ -286,7 +284,7 @@ rpm_ostree_install_deps() {
 ##########################
 
 dnf_install_deps() {
-    echo "Checking and installing prerequisite packages for pyenv..."
+    echo "Checking and installing prerequisite packages..."
     package_list="curl git gcc podman xhost make zlib-devel bzip2-devel openssl-devel xz-devel readline-devel sqlite-devel libffi-devel findutils"
     package_to_install=""
     
@@ -441,7 +439,7 @@ python_executable=${env_sdk_path}/bin/python
 activate_script=${env_sdk_path}/bin/activate
 
 # check if the virtual environment directory exists and if is newer than requirements.txt
-if [ ! -d "$env_sdk_path" ] || [ "$env_sdk_path" -ot "$env_sdk_path/../requirements.txt" ] || [ ! -L ${python_executable} ] || [ ! -e ${python_executable} ] || [ ! -f ${activate_script} ]; then
+if [ ! -d "$env_sdk_path" ] || [ "$env_sdk_path" -ot "$env_sdk_path/../requirements.txt" ] || [ ! -x "${python_executable}" ] || [ ! -f "${activate_script}" ]; then
     source ./create_env.sh
     create_env
 fi

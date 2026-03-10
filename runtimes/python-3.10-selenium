@@ -1,13 +1,17 @@
 
 FROM docker.io/library/python:3.10-slim
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PATH="/usr/local/bin:${PATH}"
 # install bash and common dependencies for package installation
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     bash \
     build-essential \
     ca-certificates \
+    coreutils \
     git \
+    gawk \
+    findutils \
     libffi-dev \
     libssl-dev \
     python3-dev \
@@ -15,9 +19,10 @@ RUN apt-get update && \
     gnupg \
     wget \
     curl \
-    jq \
-    python3-pip && \
+    jq && \
     rm -rf /var/lib/apt/lists/*
+
+RUN env UV_INSTALL_DIR=/usr/local/bin sh -c "$(curl -LsSf https://astral.sh/uv/install.sh)"
 
 RUN apt-get install -y ca-certificates \
         apt-transport-https
