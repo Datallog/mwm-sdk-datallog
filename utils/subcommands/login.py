@@ -9,7 +9,7 @@ from spinner import Spinner
 
 logger = Logger(__name__)
 
-login_page_url = "https://mwm.datallog.com/preferences/settings"
+login_page_url = f"{datallog_url}/preferences/settings"
 
 
 def login(args: Namespace) -> None:

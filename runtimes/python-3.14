@@ -1,4 +1,4 @@
-FROM docker.io/library/python:3.10-alpine
+FROM docker.io/library/python:3.14-alpine
 
 # install bash and common dependencies for package installation
 RUN apk add --no-cache \

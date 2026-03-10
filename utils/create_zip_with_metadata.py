@@ -7,7 +7,7 @@ from errors import EmptyProjectDirError, UnableToBundleAutomationError
 from container import (
     container_build,
     container_check_if_image_exists,
-    container_generete_build,
+    container_generate_build,
     container_install_packages,
 )
 from parser_project_ini import parse_project_ini
@@ -75,7 +75,7 @@ def create_zip_with_metadata(project_path: Path, output_zip_filename: Path) -> N
         env_dir=env_path,
     )
 
-    metadata_content = container_generete_build(
+    metadata_content = container_generate_build(
         settings=settings,
         runtime_image=runtime, project_dir=project_path, env_dir=env_path
     )

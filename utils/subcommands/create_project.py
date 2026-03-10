@@ -9,7 +9,7 @@ from get_user_path import get_user_path
 from logger import Logger
 from get_project_env import get_project_env
 from validate_name import validate_name
-from fetch_runtime_versions import fetch_runtime_versions
+from fetch_regions import fetch_regions
 from container import (
     container_check_if_image_exists,
     container_build,
@@ -22,6 +22,7 @@ from install_local_python import (
 )
 from settings import load_settings
 from parser_project_ini import parse_project_ini
+from variables import datallog_url
 
 
 logger = Logger(__name__)
@@ -111,19 +112,40 @@ def create_project(args: Namespace) -> None:
     - Can contain letters, digits (0-9), underscores (_), and hyphens (-)
     - Must be between 3 and 50 characters long."""
                 )
-            runtimes = fetch_runtime_versions("https://mwm.datallog.com/platform-api/list-runtimes")
-            if not runtimes:
-                # Couldn't get runtimes from server, show only local based runtimes
-                runtimes = [
-                    "python-3.10",
-                    "Selenium-Python 3.10"
-                ]
+            runtimes = [
+                "python-3.8",
+                "python-3.9",
+                "python-3.10",
+                "python-3.11",
+                "python-3.12",
+                "python-3.13",
+                "python-3.14",
+                "Selenium-Python 3.10",
+                "Custom (Dockerfile)"
+            ]
 
             runtime = inquirer.select(message="Select your runtime:", # type: ignore
                                     default="python-3.10",
                                       choices=runtimes).execute() # type: ignore
-            region = "us-east-1"
             
+            # Map custom selection to a specific runtime string for project.ini
+            if runtime == "Custom (Dockerfile)":
+                runtime = "custom"
+            
+            regions = fetch_regions(f"{datallog_url}/platform-api/list-regions")
+            
+            if args.region:
+                if args.region in regions:
+                    region = args.region
+                else:
+                    logger.warning(f"Region '{args.region}' is not supported. Falling back to selection.")
+                    region = inquirer.select(message="Select your region:", # type: ignore
+                                            default="us-east-1",
+                                            choices=regions).execute() # type: ignore
+            else:
+                region = inquirer.select(message="Select your region:", # type: ignore
+                                        default="us-east-1",
+                                        choices=regions).execute() # type: ignore
             
             if project_name == dirname:
                 project_path = current_path
@@ -141,31 +163,68 @@ def create_project(args: Namespace) -> None:
             spinner.text = "Copying base project files"  # type: ignore
 
             shutil.copytree(base_project_files, project_path, dirs_exist_ok=True)
+            
+            # If custom runtime is chosen, create the boilerplate Dockerfile
+            if runtime == "custom":
+                dockerfile_path = project_path / "datallog.Dockerfile"
+                dockerfile_content = """# Define your custom base image
+FROM python:3.10-slim
+
+# Install system dependencies if needed (e.g for slim based images)
+# RUN apt-get update && apt-get install -y ffmpeg
+
+COPY requirements.txt /project/requirements.txt
+RUN pip install --no-cache-dir -r /project/requirements.txt
+
+COPY . /project
+WORKDIR /project
+"""
+                with open(dockerfile_path, "w") as f:
+                    f.write(dockerfile_content)
     
 
         spinner.start()  # type: ignore
 
-
-        python_version = runtime[(len("python-")) :].strip() # type: ignore
+        if runtime == "custom":
+            python_version = "3.10"  # Default for local env if custom
+        else:
+            python_version = runtime[(len("python-")) :].strip() # type: ignore
 
         spinner.succeed("project parameters loaded successfully")  # type: ignore
-        spinner.start(text="Checking Docker image")  # type: ignore
-        container_status = container_check_if_image_exists(settings, runtime) # type: ignore
 
-        if container_status != "Yes":
-            if container_status == "Outdated":
-                spinner.fail("Docker image is outdated")  # type: ignore
-            else:
-                spinner.fail("Docker image does not exist")  # type: ignore
+        runtime_image_for_server = runtime
 
-            spinner.start(text="Building Docker image")  # type: ignore
-            logger.warning("Docker image does not exist. Building the image...")
-            container_build(settings, runtime) # type: ignore
-            spinner.succeed("Docker image built successfully")  # type: ignore
-            logger.info("Docker image built successfully.")
+        if runtime == "custom":
+            spinner.start(text="Building custom Docker image locally") # type: ignore
+            import subprocess
+            local_custom_image_name = f"local-custom-{project_name}"
+            res = subprocess.run(
+                ["docker", "build", "-t", local_custom_image_name, "-f", "datallog.Dockerfile", "."],
+                cwd=str(project_path), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            if res.returncode != 0:
+                raise DatallogError(f"Failed to build custom image: {res.stderr.decode('utf-8')}")
+            spinner.succeed("Custom Docker image built successfully") # type: ignore
+            logger.info("Custom environment detected, local image built.")
+            runtime_image_for_server = local_custom_image_name
         else:
-            spinner.succeed("Runtime Docker image exists")  # type: ignore
-            logger.info("Docker image exists.")
+            spinner.start(text="Checking Docker image")  # type: ignore
+            container_status = container_check_if_image_exists(settings, runtime) # type: ignore
+
+            if container_status != "Yes":
+                if container_status == "Outdated":
+                    spinner.fail("Docker image is outdated")  # type: ignore
+                else:
+                    spinner.fail("Docker image does not exist")  # type: ignore
+
+                spinner.start(text="Building Docker image")  # type: ignore
+                logger.warning("Docker image does not exist. Building the image...")
+                container_build(settings, runtime) # type: ignore
+                spinner.succeed("Docker image built successfully")  # type: ignore
+                logger.info("Docker image built successfully.")
+            else:
+                spinner.succeed("Runtime Docker image exists")  # type: ignore
+                logger.info("Docker image exists.")
 
         env_path = get_project_env(project_path)
         logger.info(f"Environment Path: {env_path}")
@@ -176,9 +235,10 @@ def create_project(args: Namespace) -> None:
         container_install_from_packages_list(
             settings=settings,
             requirements_file=project_path / "requirements.txt",
-            runtime_image=runtime, # type: ignore
+            runtime_image=runtime_image_for_server, # type: ignore
             env_dir=env_path,
             packages=["datallog"],
+            is_custom_image=(runtime == "custom")
         )
         spinner.succeed("Packages installed in Docker container successfully")  # type: ignore
 

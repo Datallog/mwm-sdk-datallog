@@ -139,6 +139,7 @@ def container_run(
     docker_args: List[str] = [],
     print_output: bool = False,
     print_stderr: Optional[bool] = None,
+    is_custom_image: bool = False,
 ) -> Tuple[subprocess.Popen[str], str, str]:
     """
     Execute a command in the container.
@@ -175,6 +176,8 @@ def container_run(
     docker_args.append("--entrypoint")
     docker_args.append("")
 
+    image_to_run = runtime_image if is_custom_image else "datallog-runtime-" + runtime_image
+
     container_command = [
         settings.container_engine,
         "run",
@@ -185,7 +188,7 @@ def container_run(
         "--platform",
         "linux/amd64",
         *docker_args,
-        "datallog-runtime-" + runtime_image,
+        image_to_run,
         command,
         *args,
     ]
@@ -216,6 +219,7 @@ def container_install_packages(
     requirements_file: Path,
     env_dir: Path,
     runtime_image: str,
+    is_custom_image: bool = False,
 ) -> None:
     """
     Install packages in a container.
@@ -226,14 +230,18 @@ def container_install_packages(
         runtime_image (str): image to use for the runtime.
     """
 
+    script_path = Path(__file__).parent.parent / "runtimes" / "install_packages.sh"
     container_run(
         settings=settings,
         runtime_image=runtime_image,
-        command="/install_packages.sh",
+        command="bash",
+        args=["/install_packages.sh"],
         volumes=[
+            (script_path, Path("/install_packages.sh")),
             (requirements_file, Path("/requirements.txt")),
             (env_dir, Path("/env")),
         ],
+        is_custom_image=is_custom_image,
     )
 
 
@@ -243,18 +251,22 @@ def container_install_from_requirements(
     env_dir: Path,
     runtime_image: str,
     new_requirements: Path,
+    is_custom_image: bool = False,
 ) -> Tuple[subprocess.Popen[str], str, str]:
 
+    script_path = Path(__file__).parent.parent / "runtimes" / "install_packages.sh"
     return container_run(
         settings=settings,
         runtime_image=runtime_image,
-        command="/install_packages.sh",
-        args=["requirements"],
+        command="bash",
+        args=["/install_packages.sh", "requirements"],
         volumes=[
+            (script_path, Path("/install_packages.sh")),
             (requirements_file, Path("/requirements.txt")),
             (env_dir, Path("/env")),
             (new_requirements, Path("/new_requirements.txt")),
         ],
+        is_custom_image=is_custom_image,
     )
 
 
@@ -264,6 +276,7 @@ def container_install_from_packages_list(
     env_dir: Path,
     runtime_image: str,
     packages: List[str],
+    is_custom_image: bool = False,
 ) -> Tuple[subprocess.Popen[str], str, str]:
     """
     Install packages in a container from a list.
@@ -275,15 +288,18 @@ def container_install_from_packages_list(
         packages (List[str]): List of packages to install.
     """
 
+    script_path = Path(__file__).parent.parent / "runtimes" / "install_packages.sh"
     return container_run(
         settings=settings,
         runtime_image=runtime_image,
-        command="/install_packages.sh",
-        args=["packages", *packages],
+        command="bash",
+        args=["/install_packages.sh", "packages", *packages],
         volumes=[
+            (script_path, Path("/install_packages.sh")),
             (requirements_file, Path("/requirements.txt")),
             (env_dir, Path("/env")),
         ],
+        is_custom_image=is_custom_image,
     )
 
 
@@ -293,18 +309,22 @@ def container_uninstall_from_requirements(
     env_dir: Path,
     runtime_image: str,
     new_requirements: Path,
+    is_custom_image: bool = False,
 ) -> Tuple[subprocess.Popen[str], str, str]:
 
+    script_path = Path(__file__).parent.parent / "runtimes" / "uninstall_packages.sh"
     return container_run(
         settings=settings,
         runtime_image=runtime_image,
-        command="/uninstall_packages.sh",
-        args=["requirements"],
+        command="bash",
+        args=["/uninstall_packages.sh", "requirements"],
         volumes=[
+            (script_path, Path("/uninstall_packages.sh")),
             (requirements_file, Path("/requirements.txt")),
             (env_dir, Path("/env")),
             (new_requirements, Path("/new_requirements.txt")),
         ],
+        is_custom_image=is_custom_image,
     )
 
 def container_uninstall_from_packages_list(
@@ -313,6 +333,7 @@ def container_uninstall_from_packages_list(
     env_dir: Path,
     runtime_image: str,
     packages: List[str],
+    is_custom_image: bool = False,
 ) -> Tuple[subprocess.Popen[str], str, str]:
     """
     Install packages in a container from a list.
@@ -324,19 +345,22 @@ def container_uninstall_from_packages_list(
         packages (List[str]): List of packages to install.
     """
 
+    script_path = Path(__file__).parent.parent / "runtimes" / "uninstall_packages.sh"
     return container_run(
         settings=settings,
         runtime_image=runtime_image,
-        command="/uninstall_packages.sh",
-        args=["packages", *packages],
+        command="bash",
+        args=["/uninstall_packages.sh", "packages", *packages],
         volumes=[
+            (script_path, Path("/uninstall_packages.sh")),
             (requirements_file, Path("/requirements.txt")),
             (env_dir, Path("/env")),
         ],
+        is_custom_image=is_custom_image,
     )
 
 def container_generate_hash(
-    settings: Settings, runtime_image: str, env_dir: Path, project_dir: Path
+    settings: Settings, runtime_image: str, env_dir: Path, project_dir: Path, is_custom_image: bool = False
 ) -> Tuple[str, str]:
     """
     Generate a hash of the environment directory.
@@ -348,14 +372,19 @@ def container_generate_hash(
         Tuple[str, str]: A tuple containing the requirements hash and the application hash.
     """
 
+    script_path = Path(__file__).parent.parent / "runtimes" / "gen_hash.sh"
+
     (_, stdout, _) = container_run(
         settings=settings,
         runtime_image=runtime_image,
+        command="bash",
+        args=["/gen_hash.sh"],
         volumes=[
+            (script_path, Path("/gen_hash.sh")),
             (project_dir, Path("/project")),
             (env_dir, Path("/env")),
         ],
-        command="/gen_hash.sh",
+        is_custom_image=is_custom_image,
     )
     
     stdout = stdout
@@ -466,6 +495,7 @@ def container_run_automation(
     unix_socket_path: str,
     worker_id: int,
     log_to_dir: Optional[Path],
+    is_custom_image: bool = False,
 ) -> Tuple[subprocess.Popen[str], str, str]:
     """
     Run an application in a container.
@@ -497,36 +527,45 @@ def container_run_automation(
         x_api_key = env_tokens['x-api-key']
         docker_args.append(f"datallog_x_api_key={x_api_key}")
 
+    command = "/env/bin/python"
+
     return container_run(
         settings=settings,
         runtime_image=runtime_image,
-        command="/env/bin/python",
+        command=command,
         volumes=volumes,
         args=args,
         docker_args=docker_args,
         print_output=True,
         print_stderr=False,
+        is_custom_image=is_custom_image,
     )
 
 
-def container_generete_build(
+def container_generate_build(
     settings: Settings,
-    runtime_image: str, project_dir: Path, env_dir: Path
+    runtime_image: str, project_dir: Path, env_dir: Path,
+    is_custom_image: bool = False,
 ) -> Dict[str, Any]:
     try:
         with NamedTemporaryFile(mode="w", delete=True, suffix=".json") as temp_file:
             temp_file_path = Path(temp_file.name)
+            
+            command = "/env/bin/python"
+            volumes = [
+                (project_dir, Path("/project")),
+                (temp_file_path, Path("/build.json")),
+                (env_dir, Path("/env"))
+            ]
+                
             container_run(
                 settings=settings,
                 runtime_image=runtime_image,
-                command="/env/bin/python",
-                volumes=[
-                    (project_dir, Path("/project")),
-                    (env_dir, Path("/env")),
-                    (temp_file_path, Path("/build.json")),
-                ],
+                command=command,
+                volumes=volumes,
                 docker_args=["-w", "/project"],
                 args=["-m", "datallog.utils.generate_build_file"],
+                is_custom_image=is_custom_image,
             )
             with open(temp_file_path, "r") as f:
                 build_data = json.load(f)

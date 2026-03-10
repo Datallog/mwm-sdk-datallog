@@ -22,6 +22,7 @@ class WorkerServer(ThreadingMixIn, UnixStreamServer):
         seed: Optional[Any] = None,
         parallelism: int = 1,
         log_to_dir: Optional[Path] = None,
+        is_custom_image: bool = False,
     ):
         socket_path = self.__generate_socket_path()
         self._execution = Execution(
@@ -34,6 +35,7 @@ class WorkerServer(ThreadingMixIn, UnixStreamServer):
             parallelism=parallelism,
             log_to_dir=log_to_dir,
             socket_path=socket_path,
+            is_custom_image=is_custom_image,
         )
         self._execution.set_server(self)
         super().__init__(socket_path, ExecutionWorkerHandler)

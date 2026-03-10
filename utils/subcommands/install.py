@@ -44,26 +44,48 @@ def install(args: Namespace) -> None:
         logger.info("Checking if Docker image exists...")
 
         runtime = project_ini.get("project", "runtime")
-        python_version = runtime[(len("python-")) :].strip()
+        project_name = project_ini.get("project", "name")
+        
+        if runtime == "custom":
+            python_version = "3.10"
+        else:
+            python_version = runtime[(len("python-")) :].strip()
 
         spinner.succeed("Project parameters loaded successfully")  # type: ignore
-        spinner.start(text="Checking Docker image")  # type: ignore
-        container_status = container_check_if_image_exists(settings=settings, runtime_image=runtime)
 
-        if container_status != "Yes":
-            if container_status == "Outdated":
-                spinner.fail("Docker image is outdated")  # type: ignore
-            else:
-                spinner.fail("Docker image does not exist")  # type: ignore
+        is_custom_image = (runtime == "custom")
+        runtime_image_for_server = runtime
 
-            spinner.start(text="Building Docker image")  # type: ignore
-            logger.warning("Docker image does not exist. Building the image...")
-            container_build(settings, runtime)
-            spinner.succeed("Docker image built successfully")  # type: ignore
-            logger.info("Docker image built successfully.")
+        if is_custom_image:
+            spinner.start(text="Building custom Docker image locally") # type: ignore
+            import subprocess
+            local_custom_image_name = f"local-custom-{project_name}"
+            res = subprocess.run(
+                ["docker", "build", "-t", local_custom_image_name, "-f", "datallog.Dockerfile", "."],
+                cwd=str(project_path), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            if res.returncode != 0:
+                raise DatallogError(f"Failed to build custom image: {res.stderr.decode('utf-8')}")
+            spinner.succeed("Custom Docker image built successfully") # type: ignore
+            logger.info("Custom environment detected, local image built.")
+            runtime_image_for_server = local_custom_image_name
         else:
-            spinner.succeed("Runtime Docker image exists")  # type: ignore
-            logger.info("Docker image exists.")
+            container_status = container_check_if_image_exists(settings=settings, runtime_image=runtime)
+
+            if container_status != "Yes":
+                if container_status == "Outdated":
+                    spinner.fail("Docker image is outdated")  # type: ignore
+                else:
+                    spinner.fail("Docker image does not exist")  # type: ignore
+
+                spinner.start(text="Building Docker image")  # type: ignore
+                logger.warning("Docker image does not exist. Building the image...")
+                container_build(settings, runtime)
+                spinner.succeed("Docker image built successfully")  # type: ignore
+                logger.info("Docker image built successfully.")
+            else:
+                spinner.succeed("Runtime Docker image exists")  # type: ignore
+                logger.info("Docker image exists.")
 
         env_path = get_project_env(project_path)
         logger.info(f"Environment Path: {env_path}")
@@ -75,9 +97,10 @@ def install(args: Namespace) -> None:
             container_install_from_packages_list(
                 settings=settings,
                 requirements_file=project_path / "requirements.txt",
-                runtime_image=runtime,
+                runtime_image=runtime_image_for_server,
                 env_dir=env_path,
                 packages=args.packages,
+                is_custom_image=is_custom_image,
             )
             spinner.succeed("Packages installed in Docker container successfully")  # type: ignore
         if args.requirements:
@@ -86,9 +109,10 @@ def install(args: Namespace) -> None:
             container_install_from_requirements(
                 settings=settings,
                 requirements_file=project_path / "requirements.txt",
-                runtime_image=runtime,
+                runtime_image=runtime_image_for_server,
                 env_dir=env_path,
                 new_requirements=Path(requirements_path).absolute(),
+                is_custom_image=is_custom_image,
             )
             spinner.succeed(  # type: ignore
                 "Packages installed from file in Docker container successfully"

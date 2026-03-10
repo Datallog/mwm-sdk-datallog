@@ -27,14 +27,14 @@ if [ "$current_packages" != "$requirements" ]; then
 fi
 
 if [ "$1" == "packages" ]; then
-    pip install "${@:2}"
+    pip install "${@:2}" || exit 1
 fi
 
 if [ "$1" == "requirements" ]; then
-    pip install -r /new_requirements.txt
+    pip install -r /new_requirements.txt || exit 1
 fi
 
-pip install --upgrade datallog
-pip freeze --local > /requirements.txt
+pip install --upgrade datallog || exit 1
+pip freeze --local > /requirements.txt || exit 1
 
 exit 0

@@ -30,8 +30,10 @@ class Execution:
         parallelism: int = 1,
         log_to_dir: Optional[Path] = None,
         socket_path: str,
+        is_custom_image: bool = False,
     ):
         self._runtime_image = runtime_image
+        self._is_custom_image = is_custom_image
         self._project_dir = project_dir
         self._env_dir = env_dir
 
@@ -130,6 +132,7 @@ class Execution:
                 unix_socket_path=self._socket_path,
                 worker_id=worker_id,
                 log_to_dir=self._log_to_dir,
+                is_custom_image=self._is_custom_image,
                 
             )
             self.add_worker_end_counter()

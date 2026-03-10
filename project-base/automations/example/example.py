@@ -43,7 +43,7 @@ def generate_urls(seed):
     return [parse_html(download_pages(url)) for url in urls]
 
 
-def download_page(url):
+def download_pages(url):
     """
     Downloads the HTML content of a given URL.
     Args:

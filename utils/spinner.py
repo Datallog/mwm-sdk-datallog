@@ -140,6 +140,11 @@ class Spinner:
         else:
             print(f"{RED}{BOLD}✖ {message}{RESET}")
 
+    def stop(self):
+        """Stops the spinner and restores stdout/stderr streams cleanly without printing a success/fail message."""
+        self._stop_spinner()
+        self._restore_streams_and_print_captured()
+
     def _stop_spinner(self):
         if not self._running:
             return

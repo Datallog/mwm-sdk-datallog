@@ -1,6 +1,7 @@
 from argparse import Namespace
 import json
 import os
+import subprocess
 from get_project_base_dir import get_project_base_dir
 from get_project_env import Path, get_project_env
 from parser_project_ini import parse_project_ini
@@ -56,35 +57,55 @@ def run(args: Namespace) -> None:
         project_ini = parse_project_ini(project_path / "project.ini")
 
         runtime: str = project_ini.get("project", "runtime")
+        project_name: str = project_ini.get("project", "name")
 
         spinner.succeed("Project parameters loaded successfully")  # type: ignore
 
-        spinner.start(text="Checking Docker image")  # type: ignore
-        container_status = container_check_if_image_exists(settings, runtime)
+        is_custom_image = (runtime == "custom")
+        runtime_image_for_server = runtime
 
-        if container_status != "Yes":
-            if container_status == "Outdated":
-                print("Docker image is outdated. Building the image...")
-                spinner.fail("Docker image is outdated")  # type: ignore
-            else:
-                print("Docker image does not exist. Building the image...")
-                spinner.fail("Docker image does not exist")  # type: ignore
-            spinner.start(text="Building Docker image")  # type: ignore
-            container_build(settings, runtime)
-            spinner.succeed("Docker image built successfully")  # type: ignore
+        if is_custom_image:
+            spinner.start(text="Building custom Docker image") # type: ignore
+            dockerfile_path = project_path / "datallog.Dockerfile"
+            if not dockerfile_path.exists():
+                raise InvalidAutomationError("Missing datallog.Dockerfile for custom runtime. Please create one.")
+            
+            local_custom_image_name = f"local-custom-{project_name}"
+            res = subprocess.run(
+                ["docker", "build", "-t", local_custom_image_name, "-f", "datallog.Dockerfile", "."],
+                cwd=str(project_path), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            if res.returncode != 0:
+                raise InvalidAutomationError(f"Failed to build custom image: {res.stderr.decode('utf-8')}")
+            spinner.succeed("Custom Docker image built successfully") # type: ignore
+            runtime_image_for_server = local_custom_image_name
         else:
-            spinner.succeed("Runtime Docker image exists")  # type: ignore
-            pass
+            spinner.start(text="Checking Docker image")  # type: ignore
+            container_status = container_check_if_image_exists(settings, runtime)
 
-        spinner.start(text="Checking if packages are installed in Docker container")  # type: ignore
+            if container_status != "Yes":
+                if container_status == "Outdated":
+                    print("Docker image is outdated. Building the image...")
+                    spinner.fail("Docker image is outdated")  # type: ignore
+                else:
+                    print("Docker image does not exist. Building the image...")
+                    spinner.fail("Docker image does not exist")  # type: ignore
+                spinner.start(text="Building Docker image")  # type: ignore
+                container_build(settings, runtime)
+                spinner.succeed("Docker image built successfully")  # type: ignore
+            else:
+                spinner.succeed("Runtime Docker image exists")  # type: ignore
+                pass
+
         env_path = get_project_env(project_path)
+        spinner.start(text="Checking if packages are installed in Docker container")  # type: ignore
         container_install_packages(
             settings=settings,
             requirements_file=project_path / "requirements.txt",
-            runtime_image=runtime,
+            runtime_image=runtime_image_for_server,
             env_dir=env_path,
+            is_custom_image=is_custom_image,
         )
-
         spinner.succeed("Packages installed in Docker container successfully")  # type: ignore
 
         seed_content = None
@@ -119,13 +140,14 @@ def run(args: Namespace) -> None:
     
         server = WorkerServer(
             settings=settings,
-            runtime_image=runtime,
+            runtime_image=runtime_image_for_server,
             project_dir=project_path,
             env_dir=env_path,
             automation_name=processed_automation_name,
             parallelism=args.parallelism,
             seed=seed_content,
             log_to_dir=log_to_dir.absolute() if log_to_dir else None,
+            is_custom_image=is_custom_image,
         )
         server.serve_forever()
     except InvalidAutomationError as e:

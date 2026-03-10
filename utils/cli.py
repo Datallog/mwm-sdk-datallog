@@ -44,6 +44,14 @@ parser_project.add_argument(
     default="",
     help="Name of the deployment",
 )
+parser_project.add_argument(
+    "-r",
+    "--region",
+    metavar="<region>",
+    type=str,
+    default=None,
+    help="Region for the deployment (e.g., us-east-1)",
+)
 
 # --- 'create-automation' command ---
 parser_create_automation = subparsers.add_parser(
