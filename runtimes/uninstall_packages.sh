@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-
+export UV_LINK_MODE=copy
 UV_BIN="${UV_BIN:-/usr/local/bin/uv}"
 if command -v uv >/dev/null 2>&1; then
     UV_BIN="$(command -v uv)"

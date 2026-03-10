@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+export UV_LINK_MODE=copy
 
 UV_BIN="${UV_BIN:-/usr/local/bin/uv}"
 if command -v uv >/dev/null 2>&1; then
@@ -43,6 +44,6 @@ if [ "$1" == "requirements" ]; then
 fi
 
 "$UV_BIN" pip install --python "$PYTHON_BIN" --upgrade datallog || exit 1
-"$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort > /requirements.txt c
+"$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort > /requirements.txt || exit 1
 
 exit 0
