@@ -17,6 +17,7 @@ set -e
 
 declare DATALLOG_INSTALL_CURL=""
 declare DATALLOG_INSTALL_GIT=""
+declare DATALLOG_INSTALL_UV=""
 declare DATALLOG_START_DOCKER_SERVICE=""
 declare DATALLOG_ENABLE_DOCKER_SERVICE=""
 declare DATALLOG_ADD_USER_TO_DOCKER_GROUP=""
@@ -152,23 +153,27 @@ detect_os() {
     case "$OS" in
         ubuntu)
             DATALLOG_INSTALL_DEPS="install_deps_ubuntu"
+            DATALLOG_INSTALL_UV="install_uv_linux"
         ;;
         debian)
             DATALLOG_INSTALL_DEPS="install_deps_debian"
+            DATALLOG_INSTALL_UV="install_uv_linux"
         ;;
         fedora)
-            
             if command -v rpm-ostree &> /dev/null && rpm-ostree status &> /dev/null; then
                 DATALLOG_INSTALL_DEPS="rpm_ostree_install_deps"
             else
                 DATALLOG_INSTALL_DEPS="dnf_install_deps"
             fi
+            DATALLOG_INSTALL_UV="install_uv_linux"
         ;;
         arch|manjaro)
             DATALLOG_INSTALL_DEPS="pacman_install_deps"
+            DATALLOG_INSTALL_UV="install_uv_linux"
         ;;
         macos)
             DATALLOG_INSTALL_DEPS="install_deps_macos"
+            DATALLOG_INSTALL_UV="install_uv_macos"
         ;;
         other-linux)
             OS_UNSUPPORTED=1
@@ -236,7 +241,7 @@ install_deps_debian() {
     echo "Updating package index and installing prerequisites..."
     $DATALLOG_SUDO apt-get update
     
-    package_list="ca-certificates curl x11-xserver-utils gnupg lsb-release build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
+    package_list="ca-certificates curl x11-xserver-utils gnupg lsb-release build-essential zlib1g-dev libncurses-dev libgdbm-dev libnss3-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev libbz2-dev pkg-config liblzma-dev uuid-dev"
     package_to_install=""
     
     for pkg in $package_list; do
@@ -350,6 +355,62 @@ install_deps_macos() {
     fi
 }
 
+install_uv_macos() {
+    export PATH="$HOME/.local/bin:$PATH"
+
+    if command -v uv &>/dev/null; then
+        return 0
+    fi
+
+    if ! command -v brew &>/dev/null; then
+        echo "datallog: Homebrew is not installed, can't continue." >&2
+        echo "Please install Homebrew from https://brew.sh/" >&2
+        exit 1
+    fi
+
+    export NONINTERACTIVE=1
+    brew install uv || {
+        echo "Failed to install uv using Homebrew. Please check your Homebrew installation."
+        exit 1
+    }
+}
+
+install_uv_linux() {
+    export PATH="$HOME/.local/bin:$PATH"
+
+    if command -v uv &>/dev/null; then
+        return 0
+    fi
+
+    CURL=""
+    if command -v curl &>/dev/null; then
+        CURL="curl -fsSL"
+    elif command -v wget &>/dev/null; then
+        CURL="wget -q -O-"
+    fi
+
+    if [ -z "$CURL" ]; then
+        echo "The installer needs either curl or wget to download files." >&2
+        echo "Please install either curl or wget to proceed."
+        exit 1
+    fi
+
+    $CURL https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
+
+    if command -v bash &>/dev/null; then
+        grep -q 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc 2>/dev/null || \
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >>~/.bashrc
+    fi
+    if command -v zsh &>/dev/null; then
+        grep -q 'export PATH="$HOME/.local/bin:$PATH"' ~/.zshrc 2>/dev/null || \
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >>~/.zshrc
+    fi
+    if command -v fish &>/dev/null; then
+        fish -c 'fish_add_path $HOME/.local/bin'
+    fi
+}
+
 checkout() {
     [ -d "$2" ] || git -c advice.detachedHead=0 -c core.autocrlf=false clone --branch "$3" --depth 1 "$1" "$2" || failed_checkout "$1"
 }
@@ -383,6 +444,17 @@ main() {
     # Install dependencies
     if [ -n "$DATALLOG_INSTALL_DEPS" ]; then
         $DATALLOG_INSTALL_DEPS
+    fi
+
+    if [ -n "$DATALLOG_INSTALL_UV" ]; then
+        $DATALLOG_INSTALL_UV
+    fi
+
+    export PATH="$HOME/.local/bin:$PATH"
+
+    if ! command -v uv &>/dev/null; then
+        echo "uv is not installed or not available on PATH."
+        exit 1
     fi
     
 }
