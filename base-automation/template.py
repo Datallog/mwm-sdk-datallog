@@ -9,5 +9,5 @@ To push the automation to the Datallog service, use `datallog push`.
 
 
 @automation()
-def main():
+def main(seed):
     return "Hello, World!"
