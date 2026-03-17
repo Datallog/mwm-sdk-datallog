@@ -212,11 +212,6 @@ WORKDIR /project
             container_status = container_check_if_image_exists(settings, runtime) # type: ignore
 
             if container_status != "Yes":
-                if container_status == "Outdated":
-                    spinner.fail("Docker image is outdated")  # type: ignore
-                else:
-                    spinner.fail("Docker image does not exist")  # type: ignore
-
                 spinner.start(text="Building Docker image")  # type: ignore
                 logger.warning("Docker image does not exist. Building the image...")
                 container_build(settings, runtime) # type: ignore
