@@ -1,11 +1,24 @@
 #!/bin/bash
 
-UV_BIN="${UV_BIN:-/usr/local/bin/uv}"
+# Check if uv is available
+USE_UV=false
 if command -v uv >/dev/null 2>&1; then
+    USE_UV=true
     UV_BIN="$(command -v uv)"
+elif [ -f "/usr/local/bin/uv" ]; then
+    USE_UV=true
+    UV_BIN="/usr/local/bin/uv"
 fi
 
-REQUIREMENTS_HASH=$("$UV_BIN" pip freeze --python /env/bin/python | sort | md5sum | awk '{ print $1}')
+function run_pip_freeze {
+    if [ "$USE_UV" = true ]; then
+        "$UV_BIN" pip freeze --python /env/bin/python | sort
+    else
+        /env/bin/python -m pip freeze | sort
+    fi
+}
+
+REQUIREMENTS_HASH=$(run_pip_freeze | md5sum | awk '{ print $1}')
 APP_HASH=$(find /project -path '*/.git*' -prune -o -path '/project/env*' -prune -o -path '*__pycache__*' -prune -o -type f -print0 | sort -z | xargs -0r md5sum | md5sum | awk '{ print $1}')
 echo
 echo

@@ -2,32 +2,70 @@
 
 set -e
 export UV_LINK_MODE=copy
-UV_BIN="${UV_BIN:-/usr/local/bin/uv}"
+
+# Check if uv is available
+USE_UV=false
 if command -v uv >/dev/null 2>&1; then
+    USE_UV=true
     UV_BIN="$(command -v uv)"
+elif [ -f "/usr/local/bin/uv" ]; then
+    USE_UV=true
+    UV_BIN="/usr/local/bin/uv"
 fi
 
 PYTHON_BIN="/env/bin/python"
 
+function run_venv {
+    if [ "$USE_UV" = true ]; then
+        "$UV_BIN" venv --python python3 /env || exit 1
+    else
+        python3 -m venv /env || exit 1
+    fi
+}
+
+function run_pip_install {
+    if [ "$USE_UV" = true ]; then
+        "$UV_BIN" pip install --python "$PYTHON_BIN" "$@" || exit 1
+    else
+        "$PYTHON_BIN" -m pip install "$@" || exit 1
+    fi
+}
+
+function run_pip_uninstall {
+     if [ "$USE_UV" = true ]; then
+        "$UV_BIN" pip uninstall --python "$PYTHON_BIN" "$@" || exit 1
+    else
+        "$PYTHON_BIN" -m pip uninstall "$@" || exit 1
+    fi
+}
+
+function run_pip_freeze {
+    if [ "$USE_UV" = true ]; then
+        "$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort
+    else
+        "$PYTHON_BIN" -m pip freeze | sort
+    fi
+}
+
 function ensure_env {
     if [ ! -x "$PYTHON_BIN" ]; then
-        "$UV_BIN" venv --python python3 /env || exit 1
+        run_venv
     fi
 }
 
 function reset {
     find /env -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 
-    "$UV_BIN" venv --python python3 /env || exit 1
-    "$UV_BIN" pip install --python "$PYTHON_BIN" -r /requirements.txt || exit 1
-    "$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort >/requirements.txt || exit 1
+    run_venv
+    run_pip_install -r /requirements.txt
+    run_pip_freeze > /requirements.txt
     exit 0
 }
 
 cd /env || exit 1
 ensure_env
 
-current_packages=$("$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort | tr '\n' ' ')
+current_packages=$(run_pip_freeze | tr '\n' ' ')
 requirements=$(cat /requirements.txt | sort | tr '\n' ' ')
 
 if [ "$current_packages" != "$requirements" ]; then
@@ -35,14 +73,14 @@ if [ "$current_packages" != "$requirements" ]; then
 fi
 
 if [ "$1" == "packages" ]; then
-    "$UV_BIN" pip uninstall --python "$PYTHON_BIN" -y "${@:2}" || exit 1
+    run_pip_uninstall -y "${@:2}"
 fi
 
 if [ "$1" == "requirements" ]; then
-    "$UV_BIN" pip uninstall --python "$PYTHON_BIN" -y -r /new_requirements.txt || exit 1
+    run_pip_uninstall -y -r /new_requirements.txt
 fi
 
-"$UV_BIN" pip install --python "$PYTHON_BIN" --upgrade datallog || exit 1
-"$UV_BIN" pip freeze --python "$PYTHON_BIN" | sort > /requirements.txt || exit 1
+run_pip_install --upgrade datallog
+run_pip_freeze > /requirements.txt
 
 exit 0
