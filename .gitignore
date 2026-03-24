@@ -1,10 +1,24 @@
-env
-project-envs
+# Ambientes e Dependências
+env/
+project-envs/
+venv/
+.env
+.venv
+selenium-drivers/
+
+# Certificados, Sessão e Tokens (Segurança)
 .credentials
-.sdk-update-timestamp
+.user
+projects/
+settings.json
+
+# Logs e Metadados
+*.log
 datallog.log
-__pycache__
+.sdk-update-timestamp
+.app-update-timestamp
+
+# Outros
+__pycache__/
 .stignore
 .stfolder
-settings.json
-selenium-drivers

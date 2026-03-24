@@ -1,7 +1,7 @@
 from argparse import Namespace
 from logger import Logger
 from errors import DatallogError, InvalidLoginTokenError
-from token_manager import encode_token, retrieve_token, save_token
+from token_manager import encode_token, retrieve_token, save_token, save_user_info
 import requests
 from variables import datallog_url
 from time import sleep
@@ -64,7 +64,10 @@ def _should_continue_login() -> bool:
 
 
 def login(args: Namespace) -> None:
-    if not _should_continue_login():
+    # Check if we should skip the confirmation (forced login)
+    force = getattr(args, "force_login", False)
+    
+    if not force and not _should_continue_login():
         return
 
     print("Please copy the X-Api-Key and Authorization from page:")
@@ -95,9 +98,12 @@ def login(args: Namespace) -> None:
         )
 
         if response.status_code == 200:
-            save_token(encode_token(authorization, x_api_key))
+            data = _response_json(response)
+            project_path = getattr(args, "project_path", None)
+            save_token(encode_token(authorization, x_api_key), project_path)
+            save_user_info({"email": data.get("email"), "username": data.get("username")}, project_path)
             spinner.succeed(
-                f"Logged in as {_format_account(_response_json(response))}"
+                f"Logged in as {_format_account(data)}"
             )  # type: ignore
             break
         if (

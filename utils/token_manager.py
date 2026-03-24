@@ -103,92 +103,223 @@ def safe_delete_token() -> None:
         logger.info(traceback.format_exc())
 
 
-def unsafe_token_file() -> pathlib.Path:
+import hashlib
+
+def get_project_id(project_path: pathlib.Path) -> str:
+    """
+    Generates a unique ID for a project based on its absolute path.
+    """
+    return hashlib.md5(str(project_path.absolute()).encode()).hexdigest()
+
+
+def unsafe_token_file(project_id: Optional[str] = None) -> pathlib.Path:
+    if project_id:
+        return pathlib.Path(__file__).parent.parent / "projects" / project_id / ".credentials"
     return pathlib.Path(__file__).parent.parent / ".credentials"
 
 
-def unsafe_save_token(token: str) -> None:
+def unsafe_user_file(project_id: Optional[str] = None) -> pathlib.Path:
+    if project_id:
+        return pathlib.Path(__file__).parent.parent / "projects" / project_id / ".user"
+    return pathlib.Path(__file__).parent.parent / ".user"
+
+
+def safe_save_token(token: str, project_id: Optional[str] = None) -> None:
     """
-    Saves a token to a file in the current working directory.
-    Args:
-        token (str): The token to save.
+    Saves a token to the system's keyring.
     """
     try:
-        with open(unsafe_token_file(), "w") as f:
+        identifier = TOKEN_USER_IDENTIFIER
+        if project_id:
+            identifier += f"_{project_id}"
+        keyring.set_password(SERVICE_NAME, identifier, token)
+    except NoKeyringError:
+        logger.info("No keyring backend found.")
+
+
+def safe_retrieve_token(project_id: Optional[str] = None) -> Optional[Dict[str, str]]:
+    """
+    Retrieves a token from the system's keyring.
+    """
+    try:
+        identifier = TOKEN_USER_IDENTIFIER
+        if project_id:
+            identifier += f"_{project_id}"
+        token = keyring.get_password(SERVICE_NAME, identifier)
+        if token:
+            return decode_token(token)
+        return None
+    except NoKeyringError:
+        logger.info("No keyring backend found.")
+        return None
+
+
+def unsafe_save_token(token: str, project_id: Optional[str] = None) -> None:
+    """
+    Saves a token to a file.
+    """
+    try:
+        target_file = unsafe_token_file(project_id)
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_file, "w") as f:
             f.write(token)
     except Exception as e:
         print(f"An error occurred while saving the token: {e}")
 
 
-def unsafe_retrieve_token() -> Optional[Dict[str, str]]:
+def unsafe_retrieve_token(project_id: Optional[str] = None) -> Optional[Dict[str, str]]:
     """
-    Retrieves a token from a file in the current working directory.
-    Returns:
-        str or None: The retrieved token, or None if not found or an error occurs.
+    Retrieves a token from a file.
     """
     try:
-        if unsafe_token_file().exists() is False:
+        target_file = unsafe_token_file(project_id)
+        if target_file.exists() is False:
             return None
 
-        with open(unsafe_token_file(), "r") as f:
+        with open(target_file, "r") as f:
             token = f.read().strip()
         if token:
             return decode_token(token)
         else:
             return None
     except FileNotFoundError:
-        print("Token file not found.")
         return None
     except Exception as e:
         print(f"An error occurred while retrieving the token: {e}")
         return None
 
 
-def unsafe_delete_token():
+def save_user_info(info: Dict[str, str], project_path: Optional[pathlib.Path] = None) -> None:
     """
-    Deletes a token file from the current working directory.
+    Saves user info to a file.
     """
     try:
-        if unsafe_token_file().exists():
-            unsafe_token_file().unlink()
-            print(f"Token file {unsafe_token_file()} deleted successfully.")
-        else:
-            print("Token file does not exist.")
+        project_id = get_project_id(project_path) if project_path else None
+        user_file = unsafe_user_file(project_id)
+        user_file.parent.mkdir(parents=True, exist_ok=True)
+        import json
+        with open(user_file, "w") as f:
+            json.dump(info, f)
     except Exception as e:
-        print(f"An error occurred while deleting the token file: {e}")
+        logger.error(f"Error saving user info: {e}")
 
 
-def save_token(encoded_token: str) -> None:
+def retrieve_user_info(project_path: Optional[pathlib.Path] = None) -> Optional[Dict[str, str]]:
     """
-    Saves the authorization and x-api-key tokens to the system's keyring or a file.
-    Args:
-        authorization (str): The authorization token.
-        x_api_key (str): The API key.
+    Retrieves user info from a file.
     """
+    try:
+        project_id = get_project_id(project_path) if project_path else None
+        target_file = unsafe_user_file(project_id)
+        
+        # Fallback to global if local not found
+        if project_id and not target_file.exists():
+            target_file = unsafe_user_file(None)
+
+        if not target_file.exists():
+            return None
+        import json
+        with open(target_file, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error retrieving user info: {e}")
+        return None
+
+
+def delete_user_info(project_path: Optional[pathlib.Path] = None) -> None:
+    """
+    Deletes the user info file.
+    """
+    try:
+        project_id = get_project_id(project_path) if project_path else None
+        user_file = unsafe_user_file(project_id)
+        if user_file.exists():
+            user_file.unlink()
+    except Exception as e:
+        logger.error(f"Error deleting user info: {e}")
+
+
+def save_token(encoded_token: str, project_path: Optional[pathlib.Path] = None) -> None:
+    """
+    Saves the tokens.
+    """
+    project_id = get_project_id(project_path) if project_path else None
+    
     if test_keyring():
-        safe_save_token(encoded_token)
+        safe_save_token(encoded_token, project_id)
     else:
-        unsafe_save_token(encoded_token)
+        unsafe_save_token(encoded_token, project_id)
 
 
-def retrieve_token() -> Optional[Dict[str, str]]:
+def retrieve_token(project_path: Optional[pathlib.Path] = None) -> Optional[Dict[str, str]]:
     """
-    Retrieves the authorization and x-api-key tokens from the system's keyring or a file.
-    Returns:
-        dict: A dictionary containing the authorization and x-api-key tokens.
+    Retrieves the tokens.
     """
-    token = safe_retrieve_token()
+    project_id = get_project_id(project_path) if project_path else None
+    
+    def try_decode(encoded_str: Optional[str]) -> Optional[Dict[str, str]]:
+        if not encoded_str:
+            return None
+        try:
+            return decode_token(encoded_str)
+        except InvalidLoginTokenError:
+            return None
+
+    # Try project-specific token
+    token = None
+    if project_id:
+        token = try_decode(safe_retrieve_password(project_id))
+        if token is None:
+            token = try_decode(unsafe_retrieve_password_str(project_id))
+    
+    # Fallback to global token
     if token is None:
-        token = unsafe_retrieve_token()
+        token = try_decode(safe_retrieve_password(None))
+        if token is None:
+            token = try_decode(unsafe_retrieve_password_str(None))
+            
     return token
 
 
-def delete_token():
+def safe_retrieve_password(project_id: Optional[str] = None) -> Optional[str]:
+    try:
+        identifier = TOKEN_USER_IDENTIFIER
+        if project_id:
+            identifier += f"_{project_id}"
+        return keyring.get_password(SERVICE_NAME, identifier)
+    except NoKeyringError:
+        return None
+
+
+def unsafe_retrieve_password_str(project_id: Optional[str] = None) -> Optional[str]:
+    try:
+        target_file = unsafe_token_file(project_id)
+        if target_file.exists():
+            with open(target_file, "r") as f:
+                return f.read().strip()
+    except Exception:
+        pass
+    return None
+
+
+def delete_token(project_path: Optional[pathlib.Path] = None):
     """
-    Deletes the authorization and x-api-key tokens from the system's keyring or a file.
+    Deletes the tokens.
     """
-    safe_delete_token()
-    unsafe_delete_token()
+    project_id = get_project_id(project_path) if project_path else None
+    # Keyring doesn't easily support namespaced delete in this helper yet 
+    # but we can implement it as:
+    try:
+        identifier = TOKEN_USER_IDENTIFIER
+        if project_id:
+            identifier += f"_{project_id}"
+        if keyring.get_password(SERVICE_NAME, identifier) is not None:
+            keyring.delete_password(SERVICE_NAME, identifier)
+    except Exception:
+        pass
+
+    unsafe_token_file(project_id).unlink(missing_ok=True)
+    delete_user_info(project_path)
 
 
 def encode_token(authorization: str, x_api_key: str) -> str:

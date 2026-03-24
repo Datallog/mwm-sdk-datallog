@@ -26,7 +26,8 @@ from halo import Halo  # type: ignore
 from spinner import Spinner
 from logger import Logger
 from parser_project_ini import parse_project_ini
-from token_manager import retrieve_token
+from token_manager import retrieve_token, retrieve_user_info
+from .login import login as login_cmd
 from variables import datallog_url
 from settings import load_settings
 
@@ -38,22 +39,100 @@ def push(args: Namespace) -> None:
     spinner = None
     try:
         settings = load_settings()
-        token = retrieve_token()
+        project_path = get_project_base_dir()
+        token = retrieve_token(project_path)
         if not token:
-            logger.error(
-                "You are not logged in. Please log in first with `datallog login`."
-            )
-            raise LoginRequiredError(
-                "You are not logged in. Please log in first with `datallog login`."
-            )
+            print("\n\033[93m[WARNING]\033[0m You are not logged in.")
+            confirm = input("Would you like to log in now? (Y/n): ").strip().lower()
+            if confirm == "n":
+                raise LoginRequiredError("You must be logged in to push a project.")
+            
+            # Use force_login and project_path to trigger local login
+            setattr(args, "force_login", True)
+            setattr(args, "project_path", project_path)
+            from .login import login as login_cmd
+            login_cmd(args)
+            token = retrieve_token(project_path)
+            if not token:
+                raise LoginRequiredError("Login required to continue.")
+
         logger.info(f"cwd: {os.environ.get('DATALLOG_CURRENT_PATH', os.getcwd())}")
+        project_ini = parse_project_ini(project_path / "project.ini")
+        
+        # Check if it's the first push for this project using project.ini
+        last_pushed_by = None
+        if project_ini.has_option("project", "last_pushed_by"):
+            last_pushed_by = project_ini.get("project", "last_pushed_by")
+
+        if not last_pushed_by:
+            user_info = retrieve_user_info(project_path)
+            
+            # If user_info is missing locally but we have a token, fetch it from backend once
+            if not user_info and token:
+                try:
+                    from subcommands.login import verify_token_url
+                    resp = requests.post(verify_token_url, headers=token, timeout=5)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        user_info = {"email": data.get("email"), "username": data.get("username")}
+                        from token_manager import save_user_info
+                        save_user_info(user_info, project_path)
+                except Exception:
+                    pass
+
+            account_display = "Verificação pendente (verifique sua conexão ou refaça o login)"
+            current_email = ""
+            if user_info:
+                current_email = user_info.get("email", "")
+                username = user_info.get("username", "")
+                if current_email and username:
+                    account_display = f"{username} ({current_email})"
+                elif current_email:
+                    account_display = current_email
+            
+            print(f"\n\033[94m[NOTICE]\033[0m No previous push recorded for this project.")
+            print(f"\033[94m[NOTICE]\033[0m Current logged in account: \033[1;32m{account_display}\033[0m")
+            confirm = input("\nAre you sure you want to push to this account? (Y/n): ").strip().lower()
+            if confirm == "n":
+                print("Switching account...")
+                # Set force login and project path to skip redundant confirmation 
+                # and save token locally
+                setattr(args, "force_login", True)
+                setattr(args, "project_path", project_path)
+                from .login import login as login_cmd
+                login_cmd(args)
+                token = retrieve_token(project_path) # Refresh token after login
+                if not token:
+                    raise LoginRequiredError("Login required to continue.")
+                
+                # Refresh user info after login
+                user_info = retrieve_user_info(project_path)
+                if user_info:
+                    current_email = user_info.get("email", "")
+            else:
+                # User said YES (or default). Lock this account to this project.
+                # This prevents global account switches from affecting this project.
+                if token and user_info:
+                    from token_manager import save_token, save_user_info, encode_token
+                    # authorization and x-api-key are in the token dict
+                    auth = token.get("Authorization", "")
+                    x_api = token.get("x-api-key", "")
+                    if auth and x_api:
+                        save_token(encode_token(auth, x_api), project_path)
+                        save_user_info(user_info, project_path)
+                        current_email = user_info.get("email", "")
+
+            # Save the account to project.ini so we don't ask again
+            if current_email:
+                project_ini.set("project", "last_pushed_by", current_email)
+                with open(project_path / "project.ini", "w") as f:
+                    project_ini.write(f)
+
         spinner = Spinner("Loading project...")
         spinner.start()  # type: ignore
-        project_path = get_project_base_dir()
+
         logger.info(f"Project Base Directory: {project_path}")
         logger.info("Parsing application name...")
-
-        project_ini = parse_project_ini(project_path / "project.ini")
 
         logger.info("Parsed project.ini successfully.")
         logger.info("Checking if Docker image exists...")
