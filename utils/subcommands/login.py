@@ -193,7 +193,15 @@ def login(args: Namespace) -> None:
 
         if response.status_code != 200:
             spinner.fail("Token verification failed")  # type: ignore
-            raise InvalidLoginTokenError("Invalid token. Please check your token.")
+            response_data = _response_json(response)
+            error_message = (
+                response_data.get("detail")
+                or response_data.get("message")
+                or response_data.get("error")
+                or response.text
+                or "Invalid token. Please check your token."
+            )
+            raise InvalidLoginTokenError(str(error_message))
 
         data = _response_json(response)
         project_path = getattr(args, "project_path", None)
