@@ -57,13 +57,15 @@ parser_project.add_argument(
 parser_create_automation = subparsers.add_parser(
     "create-automation",
     help="Create a new automation in the current project",
-    usage="""datallog create-automation [options] <automation>""",
+    usage="""datallog create-automation [options] [<automation_name>]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
 parser_create_automation.add_argument(
     "automation_name",
     metavar="<automation_name>",
     type=str,
+    nargs="?",
+    default="",
     help="Name of the automation to create",
 )
 
