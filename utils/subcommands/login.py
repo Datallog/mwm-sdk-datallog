@@ -116,12 +116,10 @@ def _make_callback_handler(callback_state: Dict[str, Optional[str]], event: Even
                 self.wfile.write(b"<html><body><h1>Login failed.</h1><p>You can close this window.</p></body></html>")
                 event.set()
                 return
-
             callback_state["authorization"] = params.get("authorization", [""])[0]
             callback_state["X-Api-Key"] = params.get("X-Api-Key", [""])[0]
             callback_state["email"] = params.get("email", [""])[0]
             callback_state["username"] = params.get("username", [""])[0]
-
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
