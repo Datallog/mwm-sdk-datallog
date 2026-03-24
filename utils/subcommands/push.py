@@ -183,6 +183,37 @@ COPY . /project
         
         spinner.succeed("Local Docker build completed")
 
+        spinner.start(text="Extracting project applications and requirements")
+        try:
+            from container import container_generate_build
+            build_data = container_generate_build(
+                settings, 
+                image_tag, 
+                project_path, 
+                env_path,
+                is_custom_image=True
+            )
+            automations_list = build_data.get("automations", [])
+            spinner.succeed(f"Found {len(automations_list)} applications")
+        except Exception as e:
+            # Check log level to decide if we show full internal traceback or just the error
+            if os.getenv("DATALLOG_LOG_LEVEL", "INFO").upper() == "DEBUG":
+                import traceback
+                print(traceback.format_exc())
+            
+            spinner.fail("Failed to extract applications")
+            
+            error_str = str(e)
+            relevant_lines = [l for l in error_str.splitlines() if l.strip()]
+            main_error = relevant_lines[-1] if relevant_lines else error_str
+
+            print(f"\n\033[91m{'='*70}\033[0m")
+            print(f"\033[1;91mError Detected:\033[0m \033[94m{main_error}\033[0m")
+            print(f"\033[91m{'='*70}\033[0m")
+            print(f"\n{error_str}")
+            print(f"\033[91m{'='*70}\033[0m\n")
+            return  # Stop the push as further steps would likely fail and create confusing logs
+
         spinner.start(text="Pushing project to cloud")
         push_process = subprocess.run(
             ['docker', 'push', image_tag],
@@ -195,36 +226,12 @@ COPY . /project
              
         spinner.succeed("Project successfully pushed to cloud")
 
-        spinner.start(text="Extracting project applications and requirements")
-        
-        extract_error = False
-        try:
-            from container import container_generate_build
-            build_data = container_generate_build(
-                settings, 
-                image_tag, 
-                project_path, 
-                env_path,
-                is_custom_image=True
-            )
-            automations_list = build_data.get("automations", [])
-        except Exception as e:
-            logger.warning(f"Could not extract automations via container_generate_build: {e}")
-            import traceback
-            print(traceback.format_exc())
-            automations_list = []
-            extract_error = True
 
         requirements_content = ""
         req_path = project_path / "requirements.txt"
         if req_path.exists():
             with open(req_path, 'r', encoding='utf-8') as f:
                 requirements_content = f.read()
-
-        if extract_error:
-            spinner.fail("Failed to extract applications")
-        else:
-            spinner.succeed(f"Found {len(automations_list)} applications")
         spinner.start(text="Notifying MWM to trigger final infrastructure setup")
         
         notify_response = requests.post(

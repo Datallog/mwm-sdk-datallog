@@ -50,7 +50,7 @@ def _should_continue_login() -> bool:
 
     if response.status_code == 200:
         print(f"Current logged in account: {_format_account(_response_json(response))}")
-        confirm = input("Do you want to log in again? (Y/N): ").strip()
+        confirm = input("Do you want to switch accounts? (Y/N): ").strip()
         if confirm.lower() != "y":
             print("Login cancelled.")
             return False

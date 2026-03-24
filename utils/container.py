@@ -571,4 +571,6 @@ def container_generate_build(
                 build_data = json.load(f)
         return build_data
     except DatallogRuntimeError as e:
-        raise UnableToBuildImageError(e.stdout)
+        # Include stderr as it usually contains the relevant user code error (SyntaxError, ImportError, etc.)
+        error_msg = e.stderr if e.stderr.strip() else e.stdout
+        raise UnableToBuildImageError(f"Extraction failed. This usually means your code has syntax or import errors.\n\n{error_msg}")
