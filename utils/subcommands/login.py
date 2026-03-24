@@ -118,7 +118,7 @@ def _make_callback_handler(callback_state: Dict[str, Optional[str]], event: Even
                 return
 
             callback_state["authorization"] = params.get("authorization", [""])[0]
-            callback_state["x_api_key"] = params.get("x_api_key", [""])[0]
+            callback_state["X-Api-Key"] = params.get("X-Api-Key", [""])[0]
             callback_state["email"] = params.get("email", [""])[0]
             callback_state["username"] = params.get("username", [""])[0]
 
@@ -143,11 +143,11 @@ def login(args: Namespace) -> None:
         return
 
     state = secrets.token_urlsafe(24)
-    port = _find_callback_port()
+    port: int = _find_callback_port()
     callback_state: Dict[str, Optional[str]] = {
         "expected_state": state,
         "authorization": None,
-        "x_api_key": None,
+        "X-Api-Key": None,
         "email": None,
         "username": None,
         "error": None,
@@ -176,7 +176,7 @@ def login(args: Namespace) -> None:
             raise DatallogError(callback_state["error"] or "Login authorization failed.")
 
         authorization = callback_state["authorization"] or ""
-        x_api_key = callback_state["x_api_key"] or ""
+        x_api_key = callback_state["X-Api-Key"] or ""
         if not authorization or not x_api_key:
             spinner.fail("Login authorization failed")  # type: ignore
             raise InvalidLoginTokenError("Invalid login response. Missing credentials.")
