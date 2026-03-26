@@ -4,7 +4,7 @@ from socket import socket
 from threading import Event, Thread
 from time import sleep
 from typing import Dict, Optional
-from urllib.parse import parse_qs, quote, urlparse
+from urllib.parse import parse_qs, quote, urlencode, urlparse
 import secrets
 import webbrowser
 
@@ -19,6 +19,7 @@ from variables import datallog_api_url, datallog_web_url
 logger = Logger(__name__)
 
 authorize_page_url = f"{datallog_web_url}/sdk/authorize"
+login_result_page_url = f"{datallog_web_url}/sdk/login-result"
 verify_token_url = f"{datallog_api_url}/api/sdk/verify-token"
 
 
@@ -86,6 +87,17 @@ def _build_authorize_url(port: int, state: str) -> str:
     )
 
 
+def _build_login_result_url(status: str, message: str = "", account: str = "") -> str:
+    query = urlencode(
+        {
+            "status": status,
+            "message": message,
+            "account": account,
+        }
+    )
+    return f"{login_result_page_url}?{query}"
+
+
 def _make_callback_handler(callback_state: Dict[str, Optional[str]], event: Event):
     class CallbackHandler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -101,31 +113,27 @@ def _make_callback_handler(callback_state: Dict[str, Optional[str]], event: Even
 
             if state != callback_state["expected_state"]:
                 callback_state["error"] = "Invalid callback state received from browser."
-                self.send_response(400)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_response(302)
+                self.send_header("Location", _build_login_result_url("error", callback_state["error"]))
                 self.end_headers()
-                self.wfile.write(b"<html><body><h1>Invalid login response.</h1></body></html>")
                 event.set()
                 return
 
             if status != "success":
                 callback_state["error"] = params.get("message", ["Login authorization failed."])[0]
-                self.send_response(400)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_response(302)
+                self.send_header("Location", _build_login_result_url("error", callback_state["error"]))
                 self.end_headers()
-                self.wfile.write(b"<html><body><h1>Login failed.</h1><p>You can close this window.</p></body></html>")
                 event.set()
                 return
             callback_state["authorization"] = params.get("authorization", [""])[0]
             callback_state["X-Api-Key"] = params.get("X-Api-Key", [""])[0]
             callback_state["email"] = params.get("email", [""])[0]
             callback_state["username"] = params.get("username", [""])[0]
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
+            account = callback_state["username"] or callback_state["email"] or ""
+            self.send_response(302)
+            self.send_header("Location", _build_login_result_url("success", account=account))
             self.end_headers()
-            self.wfile.write(
-                b"<html><body><h1>SDK login completed.</h1><p>You can close this window and return to the terminal.</p></body></html>"
-            )
             event.set()
 
         def log_message(self, format, *args):  # noqa: A003
