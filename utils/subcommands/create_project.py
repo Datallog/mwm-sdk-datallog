@@ -132,20 +132,28 @@ def create_project(args: Namespace) -> None:
             if runtime == "Custom (Dockerfile)":
                 runtime = "custom"
             
-            regions = fetch_regions("https://mwm.datallog.com/platform-api/list-regions")
+            from InquirerPy.base import Choice # type: ignore
+            regions_data = fetch_regions("https://mwm.datallog.com/platform-api/list-regions")
+            region_choices = [
+                Choice(
+                    name=f"{r.get('display_name', r['region_name'])} ({r['region_name']})", 
+                    value=r['region_name']
+                ) for r in regions_data
+            ]
+            region_names = [r['region_name'] for r in regions_data]
             
             if args.region:
-                if args.region in regions:
+                if args.region in region_names:
                     region = args.region
                 else:
                     logger.warning(f"Region '{args.region}' is not supported. Falling back to selection.")
                     region = inquirer.select(message="Select your region:", # type: ignore
                                             default="us-east-1",
-                                            choices=regions).execute() # type: ignore
+                                            choices=region_choices).execute() # type: ignore
             else:
                 region = inquirer.select(message="Select your region:", # type: ignore
                                         default="us-east-1",
-                                        choices=regions).execute() # type: ignore
+                                        choices=region_choices).execute() # type: ignore
             
             if project_name == dirname:
                 project_path = current_path
