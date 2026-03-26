@@ -1,8 +1,10 @@
 from argparse import Namespace
+import base64
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
 from socket import socket
 from threading import Event, Thread
-from time import sleep
+from time import sleep, time
 from typing import Dict, Optional
 from urllib.parse import parse_qs, quote, urlencode, urlparse
 import secrets
@@ -81,8 +83,10 @@ def _find_callback_port() -> int:
 
 def _build_authorize_url(port: int, state: str) -> str:
     callback_url = f"http://127.0.0.1:{port}/callback"
+    callback_probe_url = f"http://127.0.0.1:{port}/health"
     return (
         f"{authorize_page_url}?redirect_uri={quote(callback_url, safe='')}"
+        f"&callback_probe_uri={quote(callback_probe_url, safe='')}"
         f"&state={quote(state, safe='')}"
     )
 
@@ -98,10 +102,58 @@ def _build_login_result_url(status: str, message: str = "", account: str = "") -
     return f"{login_result_page_url}?{query}"
 
 
+def _decode_manual_login_code(code: str, expected_state: str) -> Dict[str, str]:
+    normalized_code = code.strip()
+    padding = "=" * (-len(normalized_code) % 4)
+
+    try:
+        decoded = base64.urlsafe_b64decode(f"{normalized_code}{padding}".encode("utf-8")).decode("utf-8")
+        payload = json.loads(decoded)
+    except Exception as exc:
+        raise InvalidLoginTokenError("Invalid manual login code.") from exc
+
+    if payload.get("state") != expected_state:
+        raise InvalidLoginTokenError("Invalid manual login code state.")
+
+    authorization = str(payload.get("authorization") or "")
+    x_api_key = str(payload.get("X-Api-Key") or "")
+    if not authorization or not x_api_key:
+        raise InvalidLoginTokenError("Manual login code is missing credentials.")
+
+    return {
+        "authorization": authorization,
+        "X-Api-Key": x_api_key,
+        "email": str(payload.get("email") or ""),
+        "username": str(payload.get("username") or ""),
+    }
+
+
+def _read_manual_login_code(manual_state: Dict[str, Optional[str]], event: Event):
+    def reader():
+        try:
+            code = input().strip()
+            if code:
+                manual_state["code"] = code
+                event.set()
+        except EOFError:
+            return
+
+    return reader
+
+
 def _make_callback_handler(callback_state: Dict[str, Optional[str]], event: Event):
     class CallbackHandler(BaseHTTPRequestHandler):
         def do_GET(self):
             parsed = urlparse(self.path)
+            if parsed.path == "/health":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(b'{"ok":true}')
+                return
+
             if parsed.path != "/callback":
                 self.send_response(404)
                 self.end_headers()
@@ -159,6 +211,10 @@ def login(args: Namespace) -> None:
         "error": None,
     }
     event = Event()
+    manual_code_event = Event()
+    manual_state: Dict[str, Optional[str]] = {
+        "code": None,
+    }
 
     server = ThreadingHTTPServer(("127.0.0.1", port), _make_callback_handler(callback_state, event))
     server_thread = Thread(target=server.serve_forever, daemon=True)
@@ -167,13 +223,40 @@ def login(args: Namespace) -> None:
     authorize_url = _build_authorize_url(port, state)
     print("Open the following URL to authorize the SDK login:")
     print(authorize_url)
+    print(
+        "\nIf you are using WSL, a remote machine, or a shell without local browser access,\n"
+        "copy this URL and open it in a browser that can reach Datallog.\n"
+        "If the browser cannot reach the SDK callback, Datallog will show a one-time code for you to paste here."
+    )
+    print("\nPaste the one-time login code here if Datallog asks for it, then press Enter:")
+    Thread(target=_read_manual_login_code(manual_state, manual_code_event), daemon=True).start()
     webbrowser.open(authorize_url)
 
     spinner = Spinner("Waiting for browser authorization...")
     spinner.start()  # type: ignore
 
     try:
-        if not event.wait(timeout=300):
+        deadline = time() + 300
+        while True:
+            if event.is_set():
+                break
+
+            if manual_code_event.is_set() and manual_state["code"]:
+                spinner.stop()  # type: ignore
+                manual_payload = _decode_manual_login_code(manual_state["code"] or "", state)
+                callback_state["authorization"] = manual_payload["authorization"]
+                callback_state["X-Api-Key"] = manual_payload["X-Api-Key"]
+                callback_state["email"] = manual_payload["email"]
+                callback_state["username"] = manual_payload["username"]
+                break
+
+            if time() >= deadline:
+                spinner.fail("Login authorization timed out")  # type: ignore
+                raise DatallogError("Login authorization timed out. Please try again.")
+
+            sleep(0.1)
+
+        if not event.is_set() and not callback_state["authorization"]:
             spinner.fail("Login authorization timed out")  # type: ignore
             raise DatallogError("Login authorization timed out. Please try again.")
 
