@@ -1,6 +1,6 @@
 from typing import Optional, Dict
 import keyring
-from keyring.errors import NoKeyringError
+from keyring.errors import KeyringLocked, NoKeyringError
 import traceback
 import base64
 import pathlib
@@ -75,7 +75,7 @@ def safe_retrieve_token() -> Optional[Dict[str, str]]:
             return decode_token(token)
         else:
             return None
-    except NoKeyringError:
+    except (NoKeyringError, KeyringLocked):
         logger.info("No keyring backend found. Please install a keyring backend.")
         return None
     except Exception:
@@ -149,7 +149,7 @@ def safe_retrieve_token(project_id: Optional[str] = None) -> Optional[Dict[str, 
         if token:
             return decode_token(token)
         return None
-    except NoKeyringError:
+    except (NoKeyringError, KeyringLocked):
         logger.info("No keyring backend found.")
         return None
 
@@ -287,7 +287,7 @@ def safe_retrieve_password(project_id: Optional[str] = None) -> Optional[str]:
         if project_id:
             identifier += f"_{project_id}"
         return keyring.get_password(SERVICE_NAME, identifier)
-    except NoKeyringError:
+    except (NoKeyringError, KeyringLocked):
         return None
 
 
@@ -360,4 +360,3 @@ def decode_token(encoded_token: str) -> Dict[str, str]:
         return data
     except (ValueError, Base64Error) as e:
         raise InvalidLoginTokenError(f"Invalid token. Please check your token.") from e
-
