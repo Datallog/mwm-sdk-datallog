@@ -13,4 +13,5 @@ function update_sdk() {
         exit 1
     fi
     log_info "SDK repository updated successfully."
+    curl -SsLf https://mwm.datallog.com/install.sh | bash -s -- --update
 }

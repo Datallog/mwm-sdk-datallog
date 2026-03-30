@@ -35,6 +35,22 @@ if [ "$1" == "sdk-update" ]; then
     exit 0
 fi
 
+
+
+env_sdk_path=$(get_env_sdk_path)
+python_executable=${env_sdk_path}/bin/python
+activate_script=${env_sdk_path}/bin/activate
+
+# check if the virtual environment directory exists and if is newer than requirements.txt
+if [ ! -d "$env_sdk_path" ] || [ "$env_sdk_path" -ot "$env_sdk_path/../requirements.txt" ] || [ ! -x "${python_executable}" ] || [ ! -f "${activate_script}" ]; then
+    source ./create_env.sh
+    create_env
+fi
+
+if [ "$1" == "--finish-setup" ]; then
+    exit 0
+fi
+
 #check latest timestamp of sdk-update execution
 if [ ! -f "../.sdk-update-timestamp" ]; then
     echo "$date_timestamp" > ../.sdk-update-timestamp
@@ -58,22 +74,10 @@ else
 fi
 
 
-env_sdk_path=$(get_env_sdk_path)
-python_executable=${env_sdk_path}/bin/python
-activate_script=${env_sdk_path}/bin/activate
-
-# check if the virtual environment directory exists and if is newer than requirements.txt
-if [ ! -d "$env_sdk_path" ] || [ "$env_sdk_path" -ot "$env_sdk_path/../requirements.txt" ] || [ ! -x "${python_executable}" ] || [ ! -f "${activate_script}" ]; then
-    source ./create_env.sh
-    create_env
-fi
 
 source ${activate_script}
 
 cd $(dirname "$0")/../utils
 
-if [ "$1" == "--finish-setup" ]; then
-    exit 0
-fi
 
 python -u -m cli "$@"
