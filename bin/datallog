@@ -6,6 +6,19 @@ fi
 
 export DATALLOG_CURRENT_PATH=$(pwd)
 
+safe_date_delta() {
+     if type uname >/dev/null 2>&1; then
+        case "$(uname)" in
+            Darwin)
+                date -jf "%Y-%m-%dT%H:%M:%S" $1 +%s
+                ;;
+            Linux)
+                date -d "$1" +%s
+                ;;
+        esac
+    fi
+}
+
 cd $(dirname "$0")/../scripts
 source ./get_env_sdk_path.sh
 
