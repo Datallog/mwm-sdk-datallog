@@ -1,0 +1,50 @@
+name: Install Smoke Tests
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+
+jobs:
+  install-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-26.04
+            base_image: ubuntu:26.04
+            bootstrap_family: apt
+            expect_container_engine: ""
+          - name: linuxmint
+            base_image: ubuntu:26.04
+            bootstrap_family: apt
+            expect_container_engine: ""
+          - name: fedora
+            base_image: fedora:latest
+            bootstrap_family: dnf
+            expect_container_engine: podman
+          - name: arch
+            base_image: archlinux:latest
+            bootstrap_family: pacman
+            expect_container_engine: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run installer smoke test
+        run: |
+          args=(
+            "${{ matrix.name }}"
+            "${{ matrix.base_image }}"
+            "${{ matrix.bootstrap_family }}"
+          )
+          if [[ -n "${{ matrix.expect_container_engine }}" ]]; then
+            args+=("${{ matrix.expect_container_engine }}")
+          fi
+          bash tests/install-smoke/run-case.sh "${args[@]}"
