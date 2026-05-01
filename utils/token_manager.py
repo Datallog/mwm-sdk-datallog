@@ -312,8 +312,6 @@ def delete_token(project_path: Optional[pathlib.Path] = None):
     Deletes the tokens.
     """
     project_id = get_project_id(project_path) if project_path else None
-    # Keyring doesn't easily support namespaced delete in this helper yet 
-    # but we can implement it as:
     try:
         identifier = TOKEN_USER_IDENTIFIER
         if project_id:
@@ -325,6 +323,8 @@ def delete_token(project_path: Optional[pathlib.Path] = None):
 
     unsafe_token_file(project_id).unlink(missing_ok=True)
     delete_user_info(project_path)
+
+
 
 
 def encode_token(authorization: str, x_api_key: str) -> str:
