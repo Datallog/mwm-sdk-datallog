@@ -20,9 +20,14 @@ def test_keyring() -> bool:
     Returns:
         bool: True if keyring is available, False otherwise.
     """
+    test_identifier = TOKEN_USER_IDENTIFIER + "_keyring_test"
     try:
-        keyring.set_password(SERVICE_NAME, TOKEN_USER_IDENTIFIER, "test_token")
-        token = keyring.get_password(SERVICE_NAME, TOKEN_USER_IDENTIFIER)
+        keyring.set_password(SERVICE_NAME, test_identifier, "test_token")
+        token = keyring.get_password(SERVICE_NAME, test_identifier)
+        try:
+            keyring.delete_password(SERVICE_NAME, test_identifier)
+        except Exception:
+            pass
         if token != "test_token":
             logger.warning(
                 "Warning: Keyring is not functioning as expected. Saving token as cleartext."

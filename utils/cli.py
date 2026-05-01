@@ -221,6 +221,12 @@ if __name__ == "__main__":
 
         elif args.command == "login":
             from subcommands.login import login
+            from errors import InvalidProjectError
+            try:
+                from get_project_base_dir import get_project_base_dir
+                args.project_path = get_project_base_dir()
+            except (InvalidProjectError, Exception):
+                args.project_path = None
             login(args)
 
         elif args.command == "logout":
