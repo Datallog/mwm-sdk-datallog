@@ -51,7 +51,6 @@ function reset {
     run_venv
     run_pip_install -r /requirements.txt
     run_pip_freeze > /requirements.txt
-    exit 0
 }
 
 cd /env || exit 1
