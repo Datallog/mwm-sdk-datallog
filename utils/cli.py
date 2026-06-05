@@ -206,6 +206,20 @@ parser_purge = subparsers.add_parser(
     formatter_class=argparse.RawTextHelpFormatter,
 )
 
+# --- 'set-runtime' command ---
+parser_set_runtime = subparsers.add_parser(
+    "set-runtime",
+    help="Change the base image (runtime) of the current project",
+    usage="""datallog set-runtime <runtime>""",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+parser_set_runtime.add_argument(
+    "runtime",
+    metavar="<runtime>",
+    type=str,
+    help="Target runtime, e.g. 'python-3.12' or 'custom'",
+)
+
 # --- Example of how to parse arguments ---
 if __name__ == "__main__":
     try:
@@ -249,6 +263,9 @@ if __name__ == "__main__":
         elif args.command == "purge":
             from subcommands.purge import purge
             purge(args)
+        elif args.command == "set-runtime":
+            from subcommands.set_runtime import set_runtime
+            set_runtime(args)
         else:
             parser.print_help()
     except DatallogError as e:

@@ -4,6 +4,7 @@ import os
 import subprocess
 from get_project_base_dir import get_project_base_dir
 from get_project_env import Path, get_project_env
+from reconcile_runtime import reconcile_local_runtime
 from parser_project_ini import parse_project_ini
 from container import (
     container_build,
@@ -98,6 +99,7 @@ def run(args: Namespace) -> None:
                 pass
 
         env_path = get_project_env(project_path)
+        reconcile_local_runtime(project_path, runtime, env_path)
         spinner.start(text="Checking if packages are installed in Docker container")  # type: ignore
         container_install_packages(
             settings=settings,

@@ -18,6 +18,7 @@ from container import (
     container_install_from_requirements,
 )
 from get_project_env import get_project_env
+from reconcile_runtime import reconcile_local_runtime
 from errors import (
     DatallogError,
 )
@@ -89,6 +90,7 @@ def install(args: Namespace) -> None:
 
         env_path = get_project_env(project_path)
         logger.info(f"Environment Path: {env_path}")
+        reconcile_local_runtime(project_path, runtime, env_path)
 
         spinner.start(text="Installing packages in Docker container")  # type: ignore
 

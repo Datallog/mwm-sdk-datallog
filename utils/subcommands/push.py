@@ -319,7 +319,8 @@ COPY . /project
                 "deploy_name": name,
                 "file_hash": unified_hash,
                 "automations": automations_list,
-                "requirements_txt": requirements_content
+                "requirements_txt": requirements_content,
+                "docker_version": runtime
             },
             headers=token,
         )
