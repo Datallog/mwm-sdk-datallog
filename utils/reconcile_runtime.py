@@ -45,10 +45,13 @@ def reconcile_local_runtime(project_path: Path, runtime: str, env_path: Path) ->
 
     logger.info(f"Runtime changed; rebuilding local environment at {env_path}")
     if env_path.exists():
+        import shutil
         for child in env_path.iterdir():
-            if child.is_dir():
-                import shutil
-                shutil.rmtree(child)
-            else:
+            # `is_dir()` follows symlinks, so a symlinked child (e.g. a venv's
+            # `lib64 -> lib`) would reach `rmtree`, which refuses symlinks. Unlink
+            # symlinks and plain files; only recurse into real directories.
+            if child.is_symlink() or not child.is_dir():
                 child.unlink()
+            else:
+                shutil.rmtree(child)
     marker_file.write_text(current, encoding="utf-8")
