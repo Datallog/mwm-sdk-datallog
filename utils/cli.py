@@ -173,6 +173,45 @@ parser_push = subparsers.add_parser(
     usage="""datallog push [options]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
+parser_push.add_argument(
+    "-f",
+    "--force",
+    action="store_true",
+    default=False,
+    help="Push even if there are cloud repairs not present in the local code (overwrites them)",
+)
+
+# --- 'repair' command ---
+parser_repair = subparsers.add_parser(
+    "repair",
+    help="Inspect or pull Auto Repair fixes applied in the cloud",
+    usage="""datallog repair <diff|pull> <project> <app>""",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+repair_subparsers = parser_repair.add_subparsers(
+    dest="repair_command",
+    title="Repair subcommands",
+    help='Use "datallog repair <subcommand> --help" for more information',
+)
+repair_subparsers.required = True
+
+parser_repair_diff = repair_subparsers.add_parser(
+    "diff",
+    help="Show the repair applied in the cloud for an automation",
+    usage="""datallog repair diff <project> <app>""",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+parser_repair_diff.add_argument("project", metavar="<project>", type=str, help="Project (deploy) name")
+parser_repair_diff.add_argument("app", metavar="<app>", type=str, help="Automation name")
+
+parser_repair_pull = repair_subparsers.add_parser(
+    "pull",
+    help="Download the cloud repair files into the local automation directory",
+    usage="""datallog repair pull <project> <app>""",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+parser_repair_pull.add_argument("project", metavar="<project>", type=str, help="Project (deploy) name")
+parser_repair_pull.add_argument("app", metavar="<app>", type=str, help="Automation name")
 
 # --- 'login' command ---
 parser_login = subparsers.add_parser(
@@ -266,6 +305,9 @@ if __name__ == "__main__":
         elif args.command == "set-runtime":
             from subcommands.set_runtime import set_runtime
             set_runtime(args)
+        elif args.command == "repair":
+            from subcommands.repair import repair
+            repair(args)
         else:
             parser.print_help()
     except DatallogError as e:
