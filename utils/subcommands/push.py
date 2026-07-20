@@ -35,6 +35,29 @@ from settings import load_settings
 logger = Logger(__name__)
 
 
+def _print_unsynced_repairs_warning(unsynced) -> None:
+    from datetime import datetime
+
+    print(f"\n\033[93m{'='*70}\033[0m")
+    print("\033[1;93m[WARNING] Cloud repairs not present in your local code\033[0m")
+    print(f"\033[93m{'='*70}\033[0m")
+    for item in unsynced:
+        app_name = item.get("app_name", "?")
+        applied_at = item.get("applied_at")
+        when = ""
+        if applied_at:
+            try:
+                when = " (applied on " + datetime.fromtimestamp(int(applied_at)).strftime("%Y-%m-%d %H:%M") + ")"
+            except (ValueError, OSError, TypeError):
+                when = ""
+        print(f"  \033[1m{app_name}\033[0m has a repair applied in the cloud{when} that is NOT in your local code.")
+    print("\nYour push was NOT applied, to avoid overwriting those repairs. Options:")
+    print("  \033[94mdatallog repair diff <project> <app>\033[0m   inspect the applied repair")
+    print("  \033[94mdatallog repair pull <project> <app>\033[0m   download the fix into your local code")
+    print("  \033[94mdatallog push --force\033[0m                  push over the cloud repair (discards it)")
+    print(f"\033[93m{'='*70}\033[0m\n")
+
+
 def push(args: Namespace) -> None:
     spinner = None
     try:
@@ -313,6 +336,7 @@ COPY . /project
                 requirements_content = f.read()
         spinner.start(text="Notifying MWM to trigger final infrastructure setup")
         
+        force = getattr(args, "force", False)
         notify_response = requests.post(
             f"{datallog_url}/api/sdk/v4/notify-user-push",
             json={
@@ -320,10 +344,22 @@ COPY . /project
                 "file_hash": unified_hash,
                 "automations": automations_list,
                 "requirements_txt": requirements_content,
-                "docker_version": runtime
+                "docker_version": runtime,
+                "force": force,
             },
             headers=token,
         )
+
+        if notify_response.status_code == 409:
+            try:
+                body = notify_response.json()
+            except json.decoder.JSONDecodeError:
+                body = {}
+            unsynced = body.get("unsynced_repairs")
+            if unsynced:
+                spinner.fail("Push aborted: cloud repairs not present in your local code")
+                _print_unsynced_repairs_warning(unsynced)
+                return
 
         if notify_response.status_code not in (200, 201):
              try:
