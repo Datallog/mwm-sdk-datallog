@@ -52,9 +52,9 @@ def _print_unsynced_repairs_warning(unsynced) -> None:
                 when = ""
         print(f"  \033[1m{app_name}\033[0m has a repair applied in the cloud{when} that is NOT in your local code.")
     print("\nYour push was NOT applied, to avoid overwriting those repairs. Options:")
-    print("  \033[94mdatallog repair diff <project> <app>\033[0m   inspect the applied repair")
-    print("  \033[94mdatallog repair pull <project> <app>\033[0m   download the fix into your local code")
-    print("  \033[94mdatallog push --force\033[0m                  push over the cloud repair (discards it)")
+    print("  \033[94mdatallog repair diff\033[0m          inspect the applied repairs (run inside the project)")
+    print("  \033[94mdatallog repair pull\033[0m          pull the fixes into your local code and reconcile the project")
+    print("  \033[94mdatallog push --force\033[0m         push over the cloud repairs (discards them)")
     print(f"\033[93m{'='*70}\033[0m\n")
 
 

@@ -182,10 +182,12 @@ parser_push.add_argument(
 )
 
 # --- 'repair' command ---
+# Repair is project-level: the project is inferred from the current folder
+# (project.ini), exactly like `datallog push`. No positional project/app args.
 parser_repair = subparsers.add_parser(
     "repair",
     help="Inspect or pull Auto Repair fixes applied in the cloud",
-    usage="""datallog repair <diff|pull> <project> <app>""",
+    usage="""datallog repair <diff|pull>""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
 repair_subparsers = parser_repair.add_subparsers(
@@ -197,21 +199,25 @@ repair_subparsers.required = True
 
 parser_repair_diff = repair_subparsers.add_parser(
     "diff",
-    help="Show the repair applied in the cloud for an automation",
-    usage="""datallog repair diff <project> <app>""",
+    help="Show the cloud repairs applied to the current project (optionally one automation)",
+    usage="""datallog repair diff [<app>]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
-parser_repair_diff.add_argument("project", metavar="<project>", type=str, help="Project (deploy) name")
-parser_repair_diff.add_argument("app", metavar="<app>", type=str, help="Automation name")
+parser_repair_diff.add_argument(
+    "app",
+    metavar="<app>",
+    type=str,
+    nargs="?",
+    default=None,
+    help="Optional automation name to restrict the diff to a single app",
+)
 
 parser_repair_pull = repair_subparsers.add_parser(
     "pull",
-    help="Download the cloud repair files into the local automation directory",
-    usage="""datallog repair pull <project> <app>""",
+    help="Download all cloud repairs for the current project and reconcile it for pushing",
+    usage="""datallog repair pull""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
-parser_repair_pull.add_argument("project", metavar="<project>", type=str, help="Project (deploy) name")
-parser_repair_pull.add_argument("app", metavar="<app>", type=str, help="Automation name")
 
 # --- 'login' command ---
 parser_login = subparsers.add_parser(
