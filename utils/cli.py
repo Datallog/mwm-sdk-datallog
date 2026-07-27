@@ -181,6 +181,21 @@ parser_push.add_argument(
     help="Push even if there are cloud repairs not present in the local code (overwrites them)",
 )
 
+# --- 'pull' command ---
+parser_pull = subparsers.add_parser(
+    "pull",
+    help="Pull the current project's live files from the Datallog service (full overwrite)",
+    usage="""datallog pull [options]""",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+parser_pull.add_argument(
+    "-f",
+    "--force",
+    action="store_true",
+    default=False,
+    help="Overwrite local files without prompting for confirmation",
+)
+
 # --- 'repair' command ---
 # Repair is project-level: the project is inferred from the current folder
 # (project.ini), exactly like `datallog push`. No positional project/app args.
@@ -214,9 +229,16 @@ parser_repair_diff.add_argument(
 
 parser_repair_pull = repair_subparsers.add_parser(
     "pull",
-    help="Download all cloud repairs for the current project and reconcile it for pushing",
+    help="[DEPRECATED] Use `datallog pull` instead — pulls the whole project, not just repair patches",
     usage="""datallog repair pull""",
     formatter_class=argparse.RawTextHelpFormatter,
+)
+parser_repair_pull.add_argument(
+    "-f",
+    "--force",
+    action="store_true",
+    default=False,
+    help="Overwrite local files without prompting for confirmation",
 )
 
 # --- 'login' command ---
@@ -277,6 +299,10 @@ if __name__ == "__main__":
         elif args.command == "push":
             from subcommands.push import push
             push(args)
+
+        elif args.command == "pull":
+            from subcommands.pull import pull
+            pull(args)
 
         elif args.command == "login":
             from subcommands.login import login

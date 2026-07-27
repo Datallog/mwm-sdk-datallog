@@ -12,6 +12,8 @@ from parser_project_ini import parse_project_ini
 from token_manager import retrieve_token
 from variables import datallog_url
 
+from .pull import _execute_pull
+
 logger = Logger(__name__)
 
 YELLOW = "\033[93m"
@@ -74,31 +76,6 @@ def _fetch_project_patches(token, project):
         return resp.json().get("data", []) or []
     except ValueError:
         raise NetworkError("Backend returned an invalid response.")
-
-
-def _reconcile_project(token, project, app_names):
-    url = f"{datallog_url}/platform-api/repair/reconcile"
-    try:
-        resp = requests.post(
-            url,
-            headers=token,
-            json={"project_name": project, "app_names": app_names},
-            timeout=30,
-        )
-    except requests.RequestException as e:
-        raise NetworkError(f"Failed to reconcile with backend: {e}")
-
-    if not resp.ok:
-        raise NetworkError(f"Backend returned {resp.status_code}: {resp.text[:200]}")
-
-
-def _safe_target(base_dir: Path, rel_path: str):
-    """Resolve rel_path under base_dir, guarding against path escape (zip-slip)."""
-    base_resolved = base_dir.resolve()
-    target = (base_dir / rel_path).resolve()
-    if base_resolved != target and base_resolved not in target.parents:
-        return None
-    return target
 
 
 def repair(args: Namespace) -> None:
@@ -189,63 +166,15 @@ def _repair_diff(args: Namespace) -> None:
 
 
 def _repair_pull(args: Namespace) -> None:
-    token, project_path, project_name = _get_auth_and_project()
-    patches = _fetch_project_patches(token, project_name)
-
-    if not patches:
-        print(f"{YELLOW}No applied repairs to pull for '{project_name}'.{RESET}")
-        return
-
-    reconciled_apps = []
-    total_files = 0
-
-    for app_patch in patches:
-        app_name = app_patch.get("app_name")
-        if not app_name:
-            continue
-
-        patch = app_patch.get("patch") or []
-        app_written = []
-        unsafe_skipped = 0
-
-        for entry in patch:
-            rel_path = entry.get("path")
-            content = entry.get("new_content", "")
-            if not rel_path:
-                continue
-
-            target = _safe_target(project_path, rel_path)
-            if target is None:
-                print(f"{RED}Skipping unsafe path outside the project: {rel_path}{RESET}")
-                unsafe_skipped += 1
-                continue
-
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with open(target, "w", encoding="utf-8") as f:
-                f.write(content)
-            app_written.append(rel_path)
-
-        # An app's cloud repair is "pulled" once it is represented locally: either
-        # we wrote its files, or it had no file changes to write. If every path was
-        # blocked as unsafe, we keep its drift flag (do not reconcile it).
-        if app_written or (not patch and unsafe_skipped == 0):
-            reconciled_apps.append(app_name)
-            total_files += len(app_written)
-            if app_written:
-                print(f"{GREEN}{app_name}{RESET}: {len(app_written)} file(s)")
-                for rel_path in app_written:
-                    print(f"  {rel_path}")
-            else:
-                print(f"{GREEN}{app_name}{RESET}: no file changes to pull")
-
-    if not reconciled_apps:
-        print(f"{YELLOW}Nothing was pulled.{RESET}")
-        return
-
-    _reconcile_project(token, project_name, reconciled_apps)
-
-    apps_str = ", ".join(reconciled_apps)
+    """Deprecated: `datallog repair pull` only ever pulled AI Auto-Repair
+    patches. `datallog pull` supersedes it by pulling the WHOLE project, so
+    we delegate to its core logic here instead of keeping a second,
+    divergent implementation. Kept (not removed) since scripts/muscle memory
+    may still call it."""
     print(
-        f"\n{GREEN}Pulled {len(reconciled_apps)} app(s): {apps_str}. "
-        f"Project reconciled — you can now run `datallog push` normally.{RESET}"
+        f"{YELLOW}[DEPRECATED] Use `datallog pull` — baixa o projeto inteiro, "
+        f"não só patches de reparo.{RESET}"
     )
+    token, project_path, project_name = _get_auth_and_project()
+    force = getattr(args, "force", False)
+    _execute_pull(token, project_path, project_name, force)

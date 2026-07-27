@@ -30,7 +30,12 @@ def _write_project_ini(path: pathlib.Path, name: str) -> None:
     )
 
 
-class RepairPullTests(unittest.TestCase):
+class RepairPullDeprecationTests(unittest.TestCase):
+    """`datallog repair pull` no longer has its own pull mechanics: it prints a
+    deprecation notice and delegates entirely to `pull.py`'s `_execute_pull`,
+    which `datallog pull` also uses. See test_pull.py for coverage of the
+    actual file-writing/prompt/zip-slip behavior."""
+
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.project_path = pathlib.Path(self.temp_dir.name)
@@ -61,77 +66,34 @@ class RepairPullTests(unittest.TestCase):
             with self.assertRaises(LoginRequiredError):
                 repair_module._repair_pull(Namespace())
 
-    def test_pull_writes_all_apps_and_reconciles(self) -> None:
-        patches = [
-            {
-                "app_name": "app_a",
-                "patch": [
-                    {"path": "automations/app_a/main.py", "new_content": "print('a')"}
-                ],
-            },
-            {
-                "app_name": "app_b",
-                "patch": [
-                    {"path": "automations/app_b/main.py", "new_content": "print('b')"}
-                ],
-            },
-        ]
-        get = MagicMock(return_value=_resp(json_data={"data": patches}))
-        post = MagicMock(return_value=_resp(json_data={"cleared": 2}))
+    def test_pull_prints_deprecation_notice_and_delegates_to_execute_pull(self) -> None:
+        execute = MagicMock()
+        printed = []
 
-        with self._patch_env(), patch.object(repair_module.requests, "get", get), patch.object(
-            repair_module.requests, "post", post
+        with self._patch_env(), patch.object(
+            repair_module, "_execute_pull", execute
+        ), patch(
+            "builtins.print",
+            side_effect=lambda *a, **k: printed.append(" ".join(str(x) for x in a)),
         ):
+            repair_module._repair_pull(Namespace(force=True))
+
+        output = "\n".join(printed)
+        self.assertIn("DEPRECATED", output)
+        self.assertIn("datallog pull", output)
+        execute.assert_called_once_with(
+            {"Authorization": "t"}, self.project_path, "myproj", True
+        )
+
+    def test_pull_defaults_force_to_false_when_absent(self) -> None:
+        execute = MagicMock()
+
+        with self._patch_env(), patch.object(repair_module, "_execute_pull", execute):
             repair_module._repair_pull(Namespace())
 
-        self.assertEqual(
-            (self.project_path / "automations/app_a/main.py").read_text(), "print('a')"
+        execute.assert_called_once_with(
+            {"Authorization": "t"}, self.project_path, "myproj", False
         )
-        self.assertEqual(
-            (self.project_path / "automations/app_b/main.py").read_text(), "print('b')"
-        )
-        # reconcile called once with exactly the apps written
-        self.assertEqual(post.call_count, 1)
-        body = post.call_args.kwargs["json"]
-        self.assertEqual(body["project_name"], "myproj")
-        self.assertEqual(sorted(body["app_names"]), ["app_a", "app_b"])
-
-    def test_pull_no_patches_does_not_reconcile(self) -> None:
-        get = MagicMock(return_value=_resp(json_data={"data": []}))
-        post = MagicMock()
-
-        with self._patch_env(), patch.object(repair_module.requests, "get", get), patch.object(
-            repair_module.requests, "post", post
-        ):
-            repair_module._repair_pull(Namespace())
-
-        post.assert_not_called()
-
-    def test_pull_skips_zip_slip_path(self) -> None:
-        patches = [
-            {
-                "app_name": "app_a",
-                "patch": [
-                    {"path": "../evil.py", "new_content": "boom"},
-                    {"path": "automations/app_a/main.py", "new_content": "ok"},
-                ],
-            }
-        ]
-        get = MagicMock(return_value=_resp(json_data={"data": patches}))
-        post = MagicMock(return_value=_resp(json_data={"cleared": 1}))
-
-        with self._patch_env(), patch.object(repair_module.requests, "get", get), patch.object(
-            repair_module.requests, "post", post
-        ):
-            repair_module._repair_pull(Namespace())
-
-        # the escaping path must NOT be written outside the project
-        self.assertFalse((self.project_path.parent / "evil.py").exists())
-        self.assertEqual(
-            (self.project_path / "automations/app_a/main.py").read_text(), "ok"
-        )
-        # app still reconciled because a safe file was written
-        self.assertEqual(post.call_args.kwargs["json"]["app_names"], ["app_a"])
 
 
 class RepairDiffTests(unittest.TestCase):
