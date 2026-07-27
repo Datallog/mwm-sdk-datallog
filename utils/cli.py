@@ -196,49 +196,24 @@ parser_pull.add_argument(
     help="Overwrite local files without prompting for confirmation",
 )
 
-# --- 'repair' command ---
-# Repair is project-level: the project is inferred from the current folder
-# (project.ini), exactly like `datallog push`. No positional project/app args.
-parser_repair = subparsers.add_parser(
-    "repair",
-    help="Inspect or pull Auto Repair fixes applied in the cloud",
-    usage="""datallog repair <diff|pull>""",
-    formatter_class=argparse.RawTextHelpFormatter,
-)
-repair_subparsers = parser_repair.add_subparsers(
-    dest="repair_command",
-    title="Repair subcommands",
-    help='Use "datallog repair <subcommand> --help" for more information',
-)
-repair_subparsers.required = True
-
-parser_repair_diff = repair_subparsers.add_parser(
+# --- 'diff' command ---
+# Diff is project-level: the project is inferred from the current folder
+# (project.ini), exactly like `datallog push`/`datallog pull`. Shows changes
+# applied in the cloud (Auto Repair OR the AI agent, whichever is more
+# recent — the backend resolves which one) that aren't in the local code yet.
+parser_diff = subparsers.add_parser(
     "diff",
-    help="Show the cloud repairs applied to the current project (optionally one automation)",
-    usage="""datallog repair diff [<app>]""",
+    help="Show cloud changes (Auto Repair or AI agent) not yet present in the local code",
+    usage="""datallog diff [<app>]""",
     formatter_class=argparse.RawTextHelpFormatter,
 )
-parser_repair_diff.add_argument(
+parser_diff.add_argument(
     "app",
     metavar="<app>",
     type=str,
     nargs="?",
     default=None,
     help="Optional automation name to restrict the diff to a single app",
-)
-
-parser_repair_pull = repair_subparsers.add_parser(
-    "pull",
-    help="[DEPRECATED] Use `datallog pull` instead — pulls the whole project, not just repair patches",
-    usage="""datallog repair pull""",
-    formatter_class=argparse.RawTextHelpFormatter,
-)
-parser_repair_pull.add_argument(
-    "-f",
-    "--force",
-    action="store_true",
-    default=False,
-    help="Overwrite local files without prompting for confirmation",
 )
 
 # --- 'login' command ---
@@ -337,9 +312,9 @@ if __name__ == "__main__":
         elif args.command == "set-runtime":
             from subcommands.set_runtime import set_runtime
             set_runtime(args)
-        elif args.command == "repair":
-            from subcommands.repair import repair
-            repair(args)
+        elif args.command == "diff":
+            from subcommands.diff import diff
+            diff(args)
         else:
             parser.print_help()
     except DatallogError as e:

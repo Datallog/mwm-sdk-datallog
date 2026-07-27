@@ -12,8 +12,6 @@ from parser_project_ini import parse_project_ini
 from token_manager import retrieve_token
 from variables import datallog_url
 
-from .pull import _execute_pull
-
 logger = Logger(__name__)
 
 YELLOW = "\033[93m"
@@ -33,10 +31,10 @@ def _format_ts(ts):
 
 def _get_auth_and_project():
     """
-    Resolve the current project from the folder, require authentication and read
-    the project name from project.ini (same source `datallog push` uses).
+    Resolve the current project from the folder and require authentication —
+    same source `datallog push`/`datallog pull` use.
 
-    Repair is a project-level operation: it must run INSIDE a project folder and
+    Diff is a project-level operation: it must run INSIDE a project folder and
     must never silently fall back to the current working directory.
     """
     try:
@@ -48,7 +46,7 @@ def _get_auth_and_project():
 
     token = retrieve_token(project_path)
     if not token:
-        raise LoginRequiredError("You must be logged in to use repair commands.")
+        raise LoginRequiredError("You must be logged in to use diff.")
 
     project_ini = parse_project_ini(project_path / "project.ini")
     project_name = project_ini.get("project", "name")
@@ -56,7 +54,11 @@ def _get_auth_and_project():
     return token, project_path, project_name
 
 
-def _fetch_project_patches(token, project):
+def _fetch_project_changes(token, project):
+    """Puxa a correção mais recente aplicada em produção pra cada automação
+    com drift — Auto Reparo OU o agente de IA (publicar via chat), o que
+    for mais recente (o backend já resolve isso, ver
+    resolve_latest_applied_change)."""
     url = f"{datallog_url}/platform-api/repair/patches/{project}"
     try:
         resp = requests.get(url, headers=token, timeout=30)
@@ -78,24 +80,6 @@ def _fetch_project_patches(token, project):
         raise NetworkError("Backend returned an invalid response.")
 
 
-def repair(args: Namespace) -> None:
-    try:
-        subcommand = getattr(args, "repair_command", None)
-        if subcommand == "diff":
-            _repair_diff(args)
-        elif subcommand == "pull":
-            _repair_pull(args)
-        else:
-            print("Usage: datallog repair <diff|pull>")
-    except DatallogError as e:
-        message = getattr(e, "message", str(e))
-        logger.error(message)
-        print(f"{RED}{message}{RESET}")
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        print(f"{RED}Unexpected error: {e}{RESET}")
-
-
 def _print_file_diff(base_dir: Path, entry: dict) -> None:
     rel_path = entry.get("path", "?")
     new_content = entry.get("new_content", "")
@@ -109,7 +93,7 @@ def _print_file_diff(base_dir: Path, entry: dict) -> None:
         old_content = local_file.read_text(encoding="utf-8", errors="replace")
 
     if old_content == new_content:
-        print(f"{YELLOW}(local file already matches the cloud repair){RESET}")
+        print(f"{YELLOW}(local file already matches the cloud version){RESET}")
         return
 
     diff_lines = difflib.unified_diff(
@@ -128,31 +112,31 @@ def _print_file_diff(base_dir: Path, entry: dict) -> None:
             print(line)
 
 
-def _repair_diff(args: Namespace) -> None:
+def _diff_command(args: Namespace) -> None:
     token, project_path, project_name = _get_auth_and_project()
-    patches = _fetch_project_patches(token, project_name)
+    changes = _fetch_project_changes(token, project_name)
 
     app_filter = getattr(args, "app", None)
     if app_filter:
-        patches = [p for p in patches if p.get("app_name") == app_filter]
-        if not patches:
+        changes = [c for c in changes if c.get("app_name") == app_filter]
+        if not changes:
             print(
-                f"{YELLOW}No applied repair found for '{app_filter}' in "
+                f"{YELLOW}No applied change found for '{app_filter}' in "
                 f"'{project_name}'.{RESET}"
             )
             return
 
-    if not patches:
-        print(f"{YELLOW}No cloud repairs to review for '{project_name}'.{RESET}")
+    if not changes:
+        print(f"{YELLOW}No cloud changes to review for '{project_name}'.{RESET}")
         return
 
-    for app_patch in patches:
-        app_name = app_patch.get("app_name", "?")
-        patch = app_patch.get("patch") or []
-        explanation = app_patch.get("patch_explanation")
-        applied_at = app_patch.get("applied_at")
+    for app_change in changes:
+        app_name = app_change.get("app_name", "?")
+        patch = app_change.get("patch") or []
+        explanation = app_change.get("patch_explanation")
+        applied_at = app_change.get("applied_at")
 
-        print(f"\n{BOLD}Cloud repair applied for '{app_name}'{RESET}")
+        print(f"\n{BOLD}Cloud change applied for '{app_name}'{RESET}")
         if applied_at:
             print(f"Applied at: {_format_ts(applied_at)}")
         if explanation:
@@ -165,16 +149,13 @@ def _repair_diff(args: Namespace) -> None:
             _print_file_diff(project_path, entry)
 
 
-def _repair_pull(args: Namespace) -> None:
-    """Deprecated: `datallog repair pull` only ever pulled AI Auto-Repair
-    patches. `datallog pull` supersedes it by pulling the WHOLE project, so
-    we delegate to its core logic here instead of keeping a second,
-    divergent implementation. Kept (not removed) since scripts/muscle memory
-    may still call it."""
-    print(
-        f"{YELLOW}[DEPRECATED] Use `datallog pull` — baixa o projeto inteiro, "
-        f"não só patches de reparo.{RESET}"
-    )
-    token, project_path, project_name = _get_auth_and_project()
-    force = getattr(args, "force", False)
-    _execute_pull(token, project_path, project_name, force)
+def diff(args: Namespace) -> None:
+    try:
+        _diff_command(args)
+    except DatallogError as e:
+        message = getattr(e, "message", str(e))
+        logger.error(message)
+        print(f"{RED}{message}{RESET}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        print(f"{RED}Unexpected error: {e}{RESET}")
