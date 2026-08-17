@@ -8,6 +8,8 @@ from time import sleep, time
 from typing import Dict, Optional
 from urllib.parse import parse_qs, quote, urlencode, urlparse
 import secrets
+import select
+import sys
 import webbrowser
 
 import requests
@@ -128,15 +130,33 @@ def _decode_manual_login_code(code: str, expected_state: str) -> Dict[str, str]:
     }
 
 
-def _read_manual_login_code(manual_state: Dict[str, Optional[str]], event: Event):
+def _read_manual_login_code(manual_state: Dict[str, Optional[str]], event: Event, stop: Event):
+    # A blocking input() cannot be cancelled: the thread would survive login() and
+    # keep competing for stdin with whoever called us (see push), stealing the next
+    # answer the user types. So poll stdin instead and honour the stop flag.
     def reader():
-        try:
-            code = input().strip()
+        while not stop.is_set():
+            try:
+                ready, _, _ = select.select([sys.stdin], [], [], 0.2)
+            except (OSError, ValueError):
+                return
+
+            if not ready:
+                continue
+
+            try:
+                line = sys.stdin.readline()
+            except (EOFError, OSError, ValueError):
+                return
+
+            if not line:
+                return
+
+            code = line.strip()
             if code:
                 manual_state["code"] = code
                 event.set()
-        except EOFError:
-            return
+                return
 
     return reader
 
@@ -212,6 +232,7 @@ def login(args: Namespace) -> None:
     }
     event = Event()
     manual_code_event = Event()
+    stop_reader = Event()
     manual_state: Dict[str, Optional[str]] = {
         "code": None,
     }
@@ -229,7 +250,11 @@ def login(args: Namespace) -> None:
         "If the browser cannot reach the SDK callback, Datallog will show a one-time code for you to paste here."
     )
     print("\nPaste the one-time login code here if Datallog asks for it, then press Enter:")
-    Thread(target=_read_manual_login_code(manual_state, manual_code_event), daemon=True).start()
+    reader_thread = Thread(
+        target=_read_manual_login_code(manual_state, manual_code_event, stop_reader),
+        daemon=True,
+    )
+    reader_thread.start()
     webbrowser.open(authorize_url)
 
     spinner = Spinner("Waiting for browser authorization...")
@@ -304,6 +329,8 @@ def login(args: Namespace) -> None:
         )
         spinner.succeed(f"Logged in as {_format_account(data)}")  # type: ignore
     finally:
+        stop_reader.set()
+        reader_thread.join(timeout=1)
         sleep(0.2)
         server.shutdown()
         server.server_close()
