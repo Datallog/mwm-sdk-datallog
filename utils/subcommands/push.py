@@ -58,6 +58,97 @@ def _print_unsynced_repairs_warning(unsynced) -> None:
     print(f"\033[93m{'='*70}\033[0m\n")
 
 
+def _print_schema_report(report) -> None:
+    """O que mudou no banco, tabela por tabela, como o backend reportou.
+
+    `undeclared_columns` é a linha que importa imprimir: o manifesto é ADITIVO
+    de propósito — coluna que saiu da declaração NÃO é apagada — e sem este
+    aviso o cliente que removeu um campo do código acha que ele saiu do banco.
+    """
+    tables = report.get("tables") or []
+    for item in tables:
+        name = item.get("table", "?")
+        if item.get("created"):
+            print(f"  \033[92m+\033[0m {name} \033[90m(created)\033[0m")
+        elif item.get("added_columns"):
+            print(f"  \033[94m~\033[0m {name} \033[90m(+{', '.join(item['added_columns'])})\033[0m")
+        else:
+            print(f"  \033[90m=\033[0m {name} \033[90m(unchanged)\033[0m")
+
+        undeclared = item.get("undeclared_columns") or []
+        if undeclared:
+            print(f"    \033[93m[WARNING]\033[0m not in your declaration, kept in the "
+                  f"database with its data: {', '.join(undeclared)}")
+
+
+def _aplica_o_manifesto(build_data, token, spinner) -> bool:
+    """Aplica a declaração de tabelas do projeto. Devolve se pode seguir.
+
+    O corpo sai do `build.json`, que foi escrito DENTRO da imagem pelo
+    `datallog` instalado lá — este CLI não importa o código do cliente e não
+    monta manifesto nenhum, só repassa dado puro.
+
+    `version` só entra se o build a declarou. Ausente é um SDK de imagem mais
+    velho que este CLI, e chutar a versão afirmaria um formato que o SDK não
+    afirmou; omitir deixa o backend assumir a dele, e uma divergência real sai
+    como 400 com mensagem em vez de DDL aplicado a partir de um palpite.
+
+    **Devolver `False` aborta o push, e isso é a decisão.** Ver o docstring de
+    `FalhaNoManifestoTests` em `tests/test_push_schema.py`: uma automação que
+    precisa de uma tabela que não existe falha no primeiro `insert`, e promover
+    o build depois de o DDL falhar entrega exatamente esse estado — em
+    produção, no horário do cron, com o erro num log de execução em vez do
+    terminal de quem deu o push.
+    """
+    tables = build_data.get("tables") or []
+    if not tables:
+        return True
+
+    manifest = {"tables": tables}
+    version = build_data.get("manifest_version")
+    if version is not None:
+        manifest["version"] = version
+
+    spinner.start(text=f"Applying table declarations ({len(tables)})")
+    try:
+        response = requests.post(
+            f"{datallog_url}/platform-api/data/schema",
+            json=manifest,
+            headers=token,
+        )
+    except Exception as e:
+        spinner.fail("Failed to apply table declarations")
+        print(f"\n\033[91mCould not reach the backend to declare tables: {e}\033[0m")
+        print("\033[90mYour build was NOT promoted. Nothing changed in the cloud.\033[0m\n")
+        return False
+
+    if response.status_code not in (200, 201):
+        try:
+            message = response.json().get("message", response.text)
+        except json.decoder.JSONDecodeError:
+            message = f"Server returned {response.status_code}: {response.text[:200]}"
+
+        spinner.fail("Failed to apply table declarations")
+        print(f"\n\033[91m{'='*70}\033[0m")
+        print(f"\033[1;91mTable declaration rejected:\033[0m \033[94m{message}\033[0m")
+        print(f"\033[91m{'='*70}\033[0m")
+        print("\nYour build was NOT promoted, because an automation that writes to a")
+        print("table that does not exist fails on its first insert. Fix the")
+        print("declaration in your code and push again — the image is already")
+        print("uploaded, so only the changed layers are rebuilt.")
+        print(f"\033[91m{'='*70}\033[0m\n")
+        return False
+
+    spinner.succeed(f"Table declarations applied ({len(tables)})")
+    try:
+        _print_schema_report(response.json())
+    except json.decoder.JSONDecodeError:
+        # 200 e 200: o DDL foi aplicado. Nao conseguir imprimir o relatorio nao
+        # e motivo para abortar e deixar o build velho no ar.
+        logger.warning("schema applied but the report was not JSON")
+    return True
+
+
 def push(args: Namespace) -> None:
     spinner = None
     try:
@@ -328,6 +419,18 @@ COPY . /project
              
         spinner.succeed("Project successfully pushed to cloud")
 
+        # A declaracao de tabelas, e ela vem ANTES do `notify-user-push`.
+        #
+        # `notify-user-push` e o que PROMOVE o build: a partir dele a automacao
+        # nova esta no ar e pode rodar. Ela precisa da tabela ANTES disso — se o
+        # DDL saisse depois, ou junto, a janela entre as duas chamadas e um
+        # `insert` respondendo 404 "tabela nao existe". Esta escrito tambem no
+        # docstring da `DataSchemaView`, do outro lado.
+        #
+        # Depois do `docker push` e nao antes: DDL aplicado para um build cuja
+        # imagem nunca subiu deixaria tabela orfa no banco do cliente.
+        if not _aplica_o_manifesto(build_data, token, spinner):
+            return
 
         requirements_content = ""
         req_path = project_path / "requirements.txt"
