@@ -162,8 +162,12 @@ class _PushCompleto:
     def tearDown(self):
         self.tmp.cleanup()
 
-    def _roda(self, build_data, resposta_do_schema=None):
-        """Roda `push()` inteiro e devolve a lista de URLs que receberam POST."""
+    def _roda(self, build_data, resposta_do_schema=None, sai_com=None):
+        """Roda `push()` inteiro e devolve a lista de URLs que receberam POST.
+
+        `sai_com` é o código de saída esperado quando o push para: o CI lê esse
+        código, e um push que para com 0 aparece como deploy verde.
+        """
         ecr = _resp(200, {
             "credentials": {}, "registry_url": "reg.test",
             "repository_uri": "reg.test/myproj",
@@ -197,7 +201,12 @@ class _PushCompleto:
             Spinner=MagicMock(),
         ), patch("subprocess.run", return_value=processo), \
              patch("container.container_generate_build", return_value=build_data):
-            push_module.push(Namespace(force=False))
+            if sai_com is None:
+                push_module.push(Namespace(force=False))
+            else:
+                with self.assertRaises(SystemExit) as saida:
+                    push_module.push(Namespace(force=False))
+                self.assertEqual(saida.exception.code, sai_com)
 
         return [c.args[0] for c in req.post.call_args_list], req
 
@@ -251,7 +260,8 @@ class FalhaNoManifestoTests(_PushCompleto, unittest.TestCase):
     def test_o_notify_NAO_e_chamado_quando_o_manifesto_e_recusado(self):
         urls, _ = self._roda(
             {"automations": ["coleta"], "tables": MANIFESTO_DO_BUILD},
-            _resp(400, {"message": "nome de coluna invalido: 'Sub-segmento'"}))
+            _resp(400, {"message": "nome de coluna invalido: 'Sub-segmento'"}),
+            sai_com=1)
 
         self.assertEqual(len(urls), 1)
         self.assertTrue(urls[0].endswith("/platform-api/data/schema"))
@@ -260,7 +270,8 @@ class FalhaNoManifestoTests(_PushCompleto, unittest.TestCase):
     def test_tambem_para_quando_a_rota_do_schema_da_500(self):
         urls, _ = self._roda(
             {"automations": ["coleta"], "tables": MANIFESTO_DO_BUILD},
-            _resp(500, {"message": "nao foi possivel aplicar a declaracao de tabelas"}))
+            _resp(500, {"message": "nao foi possivel aplicar a declaracao de tabelas"}),
+            sai_com=1)
         self.assertEqual(len(urls), 1)
 
 

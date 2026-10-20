@@ -28,6 +28,7 @@ from logger import Logger
 from parser_project_ini import parse_project_ini
 from token_manager import retrieve_token, retrieve_user_info
 from .login import login as login_cmd
+from .pages import find_pages, publish_pages
 from variables import datallog_url
 from settings import load_settings
 
@@ -405,7 +406,7 @@ COPY . /project
             print(f"\033[91m{'='*70}\033[0m")
             print(f"\n{error_str}")
             print(f"\033[91m{'='*70}\033[0m\n")
-            return  # Stop the push as further steps would likely fail and create confusing logs
+            raise SystemExit(1)  # Stop the push as further steps would likely fail and create confusing logs
 
         spinner.start(text="Pushing project to cloud")
         push_process = subprocess.run(
@@ -430,7 +431,7 @@ COPY . /project
         # Depois do `docker push` e nao antes: DDL aplicado para um build cuja
         # imagem nunca subiu deixaria tabela orfa no banco do cliente.
         if not _aplica_o_manifesto(build_data, token, spinner):
-            return
+            raise SystemExit(1)
 
         requirements_content = ""
         req_path = project_path / "requirements.txt"
@@ -462,7 +463,7 @@ COPY . /project
             if unsynced:
                 spinner.fail("Push aborted: cloud repairs not present in your local code")
                 _print_unsynced_repairs_warning(unsynced)
-                return
+                raise SystemExit(1)
 
         if notify_response.status_code not in (200, 201):
              try:
@@ -499,21 +500,35 @@ COPY . /project
                     raise Exception("Build ID not found on backend.")
                 
                 time.sleep(5)
+
+        # Pages go last: a portal calls the automations by name, so publishing
+        # it before the build is live would point the screen at code that does
+        # not exist yet.
+        pages = find_pages(project_path)
+        if pages:
+            spinner.start(text=f"Publishing {len(pages)} portal page(s)")
+            published = publish_pages(project_path, name, token)
+            created = [p["slug"] for p in published if p["created"]]
+            note = f" (new, closed until opened in the panel: {', '.join(created)})" if created else ""
+            spinner.succeed(f"Published pages: {', '.join(p['slug'] for p in published)}{note}")
     except DatallogError as e:
         if spinner:
             spinner.fail(f"Error: {e}")  # type: ignore
         else:
             logger.error(f"Error: {e}")
             print(f"\033[91m{e.message}\033[0m")
+        raise SystemExit(1)
     except KeyboardInterrupt:
         if spinner:
             spinner.fail("Operation cancelled by user (Ctrl+C)")
         else:
             logger.error("Operation cancelled by user")
             print("\033[91mOperation cancelled by user (Ctrl+C)\033[0m")
+        raise SystemExit(130)
     except Exception as e:
         if spinner:
             spinner.fail(f"Unexpected error: {str(e)}", boxed=True)
         else:
             logger.error("Unexpected error")
             print(f"\033[91mUnexpected error: {str(e)}\033[0m")
+        raise SystemExit(1)
